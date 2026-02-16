@@ -1,49 +1,68 @@
 import pandas as pd
 import logging
 
+from src.config.config import get_settings
 from src.config.logging_config import setup_logging
+from src.infrastructure.repositories.gsc_docomo_event_actual_repository import GSCDocomoEventActualRepository
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 
 def main():
-    input_file_name = input(
-        "input_files内にあるファイル名を入力してください（例: input.xlsx）: "
-    )
+    EVENT_ACTUAL_FILE, gsc_client = get_settings()
 
-    input_file_path = "./input_files/" + input_file_name.strip()
-    logging.info("読み込み中: %s", input_file_path)
+    gsc_docomo_event_actual_repository = GSCDocomoEventActualRepository(gsc_client)
 
-    sheet_name = input("シート名を入力してください: ")
+    excel_file = gsc_docomo_event_actual_repository.download_excel_as_dataframe(blob_name=EVENT_ACTUAL_FILE)
+    sheet_names = excel_file.sheet_names
 
-    # Excelファイルを読み込む
-    # 対象範囲: B〜BG列、4行目以降
-    df = pd.read_excel(input_file_path, sheet_name=sheet_name, header=5, usecols="B:BG")
+    all_data = []
 
-    key_cols = df.columns[0:13]  # No〜実施日数
-    date_cols = df.columns[13:]  # 日付列全部
+    for sheet_name in sheet_names:
+        logger.info(" %s シートを処理中です...", sheet_name)
 
-    df_long = df.melt(
-        id_vars=key_cols,
-        value_vars=date_cols,
-        var_name="日付",  # 元の列名（24日(金) など）が入る
-        value_name="日付実績",  # セルの中身（@ など）が入る
-    )
+        df = pd.read_excel(
+            excel_file,
+            sheet_name=sheet_name,
+            header=3
+        )
+
+        df = df.iloc[:, 1:]
+
+        key_cols = df.columns[:13]
+        date_cols = df.columns[13:]
+
+        df_long = df.melt(
+            id_vars=key_cols,
+            value_vars=date_cols,
+            var_name="日付",  # 元の列名（24日(金) など）が入る
+            value_name="日付実績",  # セルの中身（@ など）が入る
+        )
+
+        # どのシート由来か分かるように追加（おすすめ）
+        df_long["シート名"] = sheet_name
+
+        all_data.append(df_long)
+
+    final_df = pd.concat(all_data, ignore_index=True)
 
     # Excel上で未入力（完全空白）の行を削除
-    df_long = df_long.dropna(subset=["日付実績"]).reset_index(drop=True)
+    final_df = final_df.dropna(subset=["日付実績"]).reset_index(drop=True)
 
     # 日付実績のクレンジング
-    df_long["日付実績"] = normalize_daily_result(df_long["日付実績"])
+    final_df["日付実績"] = normalize_daily_result(final_df["日付実績"])
 
     # イベント情報別にソートする
-    df_long = df_long.sort_values(by=list(key_cols)).reset_index(drop=True)
+    final_df = final_df.sort_values(
+        by=["日付", "施設名"]
+    ).reset_index(drop=True)
+
 
     output_file_name = input("出力ファイル名を入力してください（例: output.xlsx）: ")
     output_path = "./output_files/" + output_file_name
 
-    df_long.to_excel(output_path, index=False)
+    final_df.to_excel(output_path, index=False)
 
     logger.info("フォーマット完了: %s", output_path)
 
