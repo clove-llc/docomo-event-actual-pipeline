@@ -1,10 +1,27 @@
+import logging
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+from src.infrastructure.gsc_client import GoogleCloudStorageClient
 
-GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
-DATASET_ID = os.getenv("BQ_DATASET_ID")
+logger = logging.getLogger(__name__)
 
-if not GCP_PROJECT_ID or not DATASET_ID:
-    raise ValueError("環境変数 GCP_PROJECT_ID, BQ_DATASET_ID が設定されていません。")
+def get_settings():
+    load_dotenv()
+
+    gcp_project_id = os.getenv("GCP_PROJECT_ID")
+    dataset_id = os.getenv("BQ_DATASET_ID")
+    event_actual_file = os.getenv("EVENT_ACTUAL_FILE")
+
+    if not gcp_project_id or not dataset_id or not event_actual_file:
+        raise ValueError(
+            "環境変数 GCP_PROJECT_ID, BQ_DATASET_ID, EVENT_ACTUAL_FILE が設定されていません。"
+        )
+
+    gsc_client = GoogleCloudStorageClient(
+        gcp_project_id=gcp_project_id,
+        bucket_name="docomo_event_actual",
+    )
+
+    return event_actual_file, gsc_client
+
