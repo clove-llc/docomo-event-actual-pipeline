@@ -64,3 +64,5 @@ Thumbs.db
 # GCP / credentials
 # =========================
 *.json
+
+output/
