@@ -1,12 +1,15 @@
 import logging
-from google.cloud import bigquery
-import pandas as pd
 
+
+import pandas as pd
+from google.cloud import bigquery
 
 logger = logging.getLogger(__name__)
 
 
 class BqVenuePerformanceRepository:
+    DATA_SET = "docomo_event_actual_test"
+
     TABLE_SCHEMA = [
         bigquery.SchemaField("datasource", "STRING"),
         bigquery.SchemaField("no", "INTEGER"),
@@ -39,9 +42,30 @@ class BqVenuePerformanceRepository:
         bigquery.SchemaField("is_event_cancelled", "BOOLEAN"),
     ]
 
-    def __init__(self, client: bigquery.Client, table_id: str):
+    def __init__(self, client: bigquery.Client):
         self._client = client
-        self._table_id = table_id
+        self._table_id = f"{client.project}.{self.DATA_SET}.venue_performance"
+
+    def _align_dataframe_types(self, df: pd.DataFrame) -> pd.DataFrame:
+        schema_map = {field.name: field.field_type for field in self.TABLE_SCHEMA}
+
+        for col, field_type in schema_map.items():
+            if col not in df.columns:
+                continue
+
+            if field_type == "STRING":
+                df[col] = df[col].astype("string")
+
+            elif field_type == "INTEGER":
+                df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+
+            elif field_type == "BOOLEAN":
+                df[col] = df[col].astype("boolean")
+
+            elif field_type == "DATE":
+                df[col] = pd.to_datetime(df[col], errors="coerce").dt.date
+
+        return df
 
     def save(
         self,
@@ -50,6 +74,13 @@ class BqVenuePerformanceRepository:
     ) -> None:
 
         logger.info("BigQueryへデータロード開始: %s", self._table_id)
+
+        # 足りない列を補完
+        for field in self.TABLE_SCHEMA:
+            if field.name not in df.columns:
+                df[field.name] = None
+
+        df = self._align_dataframe_types(df)
 
         job_config = bigquery.LoadJobConfig(
             write_disposition=write_disposition,
