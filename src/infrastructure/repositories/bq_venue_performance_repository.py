@@ -82,6 +82,8 @@ class BqVenuePerformanceRepository:
 
         df = self._align_dataframe_types(df)
 
+        df = df[[field.name for field in self.TABLE_SCHEMA]]
+
         job_config = bigquery.LoadJobConfig(
             write_disposition=write_disposition,
             schema=self.TABLE_SCHEMA,
