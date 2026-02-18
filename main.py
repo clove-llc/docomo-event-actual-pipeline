@@ -18,7 +18,7 @@ def main() -> None:
     project_id, event_actual_blob = get_settings()
 
     gcs_client = storage.Client(project=project_id)
-    bq_client = bigquery.Client(project=project_id)
+    bq_client = bigquery.Client(project=project_id, location="US")
 
     cloud_storage_repository = CloudStorageRepository(gcs_client)
     bigquery_repository = BigQueryRepository(bq_client)
