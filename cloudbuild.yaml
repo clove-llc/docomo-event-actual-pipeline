@@ -7,7 +7,7 @@ steps:
     args:
       - build
       - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-event-actual/docomo-event-actual-pipeline:latest
-      - --builder=gcr.io/buildpacks/builder
+      - --builder=gcr.io/buildpacks/builder:v1
       - --publish
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
