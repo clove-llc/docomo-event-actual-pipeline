@@ -2,13 +2,17 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
-  - name: "gcr.io/k8s-skaffold/pack"
-    entrypoint: pack
+  - name: "gcr.io/cloud-builders/docker"
     args:
       - build
-      - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-jobs/docomo-event-actual-pipeline:latest
-      - --builder=gcr.io/buildpacks/builder
-      - --publish
+      - -t
+      - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-jobs/docomo-event-actual-pipeline:$BUILD_ID
+      - .
+
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - push
+      - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-jobs/docomo-event-actual-pipeline:$BUILD_ID
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     entrypoint: gcloud
@@ -18,6 +22,6 @@ steps:
       - deploy
       - docomo-event-actual-pipeline-prod
       - --image
-      - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-jobs/docomo-event-actual-pipeline:latest
+      - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-jobs/docomo-event-actual-pipeline:$BUILD_ID
       - --region
       - us-central1
