@@ -15,20 +15,9 @@ steps:
     args:
       - run
       - jobs
-      - deploy
+      - update
       - docomo-event-actual-pipeline-prod
       - --image
       - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-event-actual/docomo-event-actual-pipeline:latest
       - --region
       - us-central1
-      - --project
-      - $PROJECT_ID
-      - --tasks
-      - "1"
-      - --max-retries
-      - "3"
-      - --set-env-vars
-      - GCP_PROJECT_ID=$PROJECT_ID,EVENT_ACTUAL_BLOB=$_EVENT_ACTUAL_BLOB
-
-substitutions:
-  _EVENT_ACTUAL_BLOB: "event_actual.xlsx"
