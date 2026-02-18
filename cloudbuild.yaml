@@ -6,8 +6,8 @@ steps:
     entrypoint: pack
     args:
       - build
-      - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-event-actual/docomo-event-actual-pipeline:latest
-      - --builder=gcr.io/buildpacks/builder:v1
+      - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-jobs/docomo-event-actual-pipeline:latest
+      - --builder=gcr.io/buildpacks/builder
       - --publish
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -15,9 +15,9 @@ steps:
     args:
       - run
       - jobs
-      - update
+      - deploy
       - docomo-event-actual-pipeline-prod
       - --image
-      - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-event-actual/docomo-event-actual-pipeline:latest
+      - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-jobs/docomo-event-actual-pipeline:latest
       - --region
       - us-central1
