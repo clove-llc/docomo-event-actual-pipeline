@@ -2,6 +2,14 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
+  - name: "gcr.io/k8s-skaffold/pack"
+    entrypoint: pack
+    args:
+      - build
+      - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-event-actual/docomo-event-actual-pipeline:latest
+      - --builder=gcr.io/buildpacks/builder:v1
+      - --publish
+
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     entrypoint: gcloud
     args:
@@ -9,13 +17,18 @@ steps:
       - jobs
       - deploy
       - docomo-event-actual-pipeline-prod
-      - --source=.
-      - --tasks=1
-      - --max-retries=3
-      - --region=us-central1
-      - --project=$PROJECT_ID
-      - --set-env-vars=GCP_PROJECT_ID=$PROJECT_ID
-      - --set-env-vars=EVENT_ACTUAL_BLOB=$_EVENT_ACTUAL_BLOB
+      - --image
+      - us-central1-docker.pkg.dev/$PROJECT_ID/docomo-event-actual/docomo-event-actual-pipeline:latest
+      - --region
+      - us-central1
+      - --project
+      - $PROJECT_ID
+      - --tasks
+      - "1"
+      - --max-retries
+      - "3"
+      - --set-env-vars
+      - GCP_PROJECT_ID=$PROJECT_ID,EVENT_ACTUAL_BLOB=$_EVENT_ACTUAL_BLOB
 
 substitutions:
   _EVENT_ACTUAL_BLOB: "event_actual.xlsx"
