@@ -18,16 +18,19 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     project_id, event_actual_blob = get_settings()
 
-    # Cloud Platform全体の権限 ＋ ドライブの読み取り権限
-    scopes = [
-        "https://www.googleapis.com/auth/bigquery",
-        "https://www.googleapis.com/auth/drive.readonly",
-    ]
-    # スコープ付きの認証情報を取得
-    credentials, _ = google.auth.default(scopes=scopes)
+    # # BigQueryの権限 ＋ ドライブの読み取り権限
+    # scopes = [
+    #     "https://www.googleapis.com/auth/cloud-platform",
+    #     "https://www.googleapis.com/auth/drive.readonly",
+    # ]
+    # # スコープ付きの認証情報を取得
+    # credentials, _ = google.auth.default(scopes=scopes)
 
-    gcs_client = storage.Client(project=project_id, credentials=credentials)
-    bq_client = bigquery.Client(project=project_id, credentials=credentials)
+    # gcs_client = storage.Client(project=project_id, credentials=credentials)
+    # bq_client = bigquery.Client(project=project_id, credentials=credentials)
+
+    gcs_client = storage.Client(project=project_id)
+    bq_client = bigquery.Client(project=project_id)
 
     cloud_storage_repository = CloudStorageRepository(gcs_client)
     bigquery_repository = BigQueryRepository(bq_client)
@@ -39,7 +42,7 @@ def main() -> None:
     )
 
     DERIVED_TABLE_SQL_FILES = [
-        "facility_daily_actual.sql",
+        # "facility_daily_actual.sql",
         "facility_event_decile_max_actual.sql",
         "event_decile_benchmark.sql",
         "facility_event_planning_snapshot.sql",
