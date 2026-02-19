@@ -1,5 +1,6 @@
 import logging
 
+import google.auth
 from google.cloud import storage
 from google.cloud import bigquery
 
@@ -17,8 +18,16 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     project_id, event_actual_blob = get_settings()
 
-    gcs_client = storage.Client(project=project_id)
-    bq_client = bigquery.Client(project=project_id)
+    # Cloud Platform全体の権限 ＋ ドライブの読み取り権限
+    scopes = [
+        "https://www.googleapis.com/auth/bigquery",
+        "https://www.googleapis.com/auth/drive.readonly",
+    ]
+    # スコープ付きの認証情報を取得
+    credentials, _ = google.auth.default(scopes=scopes)
+
+    gcs_client = storage.Client(project=project_id, credentials=credentials)
+    bq_client = bigquery.Client(project=project_id, credentials=credentials)
 
     cloud_storage_repository = CloudStorageRepository(gcs_client)
     bigquery_repository = BigQueryRepository(bq_client)
