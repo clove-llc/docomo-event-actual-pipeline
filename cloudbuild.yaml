@@ -26,4 +26,4 @@ steps:
       - --region
       - us-central1
       - --set-env-vars
-      - PROJECT_ID=$PROJECT_ID,EVENT_ACTUAL_BLOB=event_actuals_row.xlsx
+      - PROJECT_ID=$PROJECT_ID,EVENT_ACTUAL_SHEET_ID=1bGboaI0sf5EFA5m0JerpDZBel6zz-N5Buo0Hql_pLdY

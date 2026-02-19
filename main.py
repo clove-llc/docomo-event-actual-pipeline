@@ -17,16 +17,16 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    project_id, event_actual_sheet_id, k_service = get_settings()
+    project_id, event_actual_sheet_id, app_env = get_settings()
 
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets.readonly",
         "https://www.googleapis.com/auth/drive.readonly",
     ]
 
-    if k_service:
-        credentials, _ = google.auth.default(scopes=scopes)
-    else:
+    credentials, _ = google.auth.default(scopes=scopes)
+
+    if app_env == "local":
         credentials = Credentials.from_service_account_file(
             "cloud-run-sa.json",
             scopes=scopes,
@@ -41,7 +41,7 @@ def main() -> None:
     run_venue_performance_pipeline(
         input_repository=google_spreadsheets_repository,
         output_repository=bigquery_repository,
-        sheet_id=event_actual_sheet_id
+        sheet_id=event_actual_sheet_id,
     )
 
     DERIVED_TABLE_SQL_FILES = [
