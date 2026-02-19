@@ -1,6 +1,5 @@
 import logging
 
-import google.auth
 from google.cloud import storage
 from google.cloud import bigquery
 
