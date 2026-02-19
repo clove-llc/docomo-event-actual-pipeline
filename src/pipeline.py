@@ -4,9 +4,7 @@ import logging
 from src.bigquery_repository import (
     BigQueryRepository,
 )
-from src.cloud_storage_repository import (
-    CloudStorageRepository,
-)
+from src.google_spreadsheets_repository import GoogleSpreadSheetsRepository
 from src.transformer import EventActualTransformer
 from src.utils import load_sql
 
@@ -15,20 +13,18 @@ logger = logging.getLogger(__name__)
 
 
 def run_venue_performance_pipeline(
-    input_repository: CloudStorageRepository,
+    input_repository: GoogleSpreadSheetsRepository,
     output_repository: BigQueryRepository,
-    blob_name: str,
+    sheet_id: str,
 ) -> None:
     logger.info("実績データ更新処理を開始します。")
 
     transformer = EventActualTransformer()
 
-    excel_file = input_repository.fetch_excel_file(
-        bucket_name="docomo_event_actual", blob_name=blob_name
-    )
+    spreadsheets = input_repository.fetch_spreadsheets(sheet_id)
 
-    logger.info("Excelファイルを解析し、クレンジングを行います。")
-    df = transformer.transform(excel_file)
+    logger.info("Googleスプレッドシートを解析し、クレンジングを行います。")
+    df = transformer.transform(spreadsheets)
     logger.info("クレンジング完了。")
 
     output_repository.save_venue_performance(df)

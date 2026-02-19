@@ -1,14 +1,15 @@
 import logging
 
-from google.cloud import storage
+import gspread
+import google.auth
 from google.cloud import bigquery
+from google.oauth2.service_account import Credentials
 
-from spreadsheet import spreadsheet_test_read
 from src.bigquery_repository import BigQueryRepository
-from src.cloud_storage_repository import CloudStorageRepository
 from src.config.config import get_settings
 from src.config.logging_config import setup_logging
 
+from src.google_spreadsheets_repository import GoogleSpreadSheetsRepository
 from src.pipeline import refresh_derived_tables, run_venue_performance_pipeline
 
 setup_logging()
@@ -16,29 +17,40 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    spreadsheet_test_read()
+    project_id, event_actual_sheet_id, k_service = get_settings()
 
-    project_id, event_actual_blob = get_settings()
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets.readonly",
+        "https://www.googleapis.com/auth/drive.readonly",
+    ]
 
-    gcs_client = storage.Client(project=project_id)
+    if k_service:
+        credentials, _ = google.auth.default(scopes=scopes)
+    else:
+        credentials = Credentials.from_service_account_file(
+            "cloud-run-sa.json",
+            scopes=scopes,
+        )
+
+    gs_client = gspread.authorize(credentials)
     bq_client = bigquery.Client(project=project_id)
 
-    cloud_storage_repository = CloudStorageRepository(gcs_client)
+    google_spreadsheets_repository = GoogleSpreadSheetsRepository(gs_client)
     bigquery_repository = BigQueryRepository(bq_client)
 
     run_venue_performance_pipeline(
-        input_repository=cloud_storage_repository,
+        input_repository=google_spreadsheets_repository,
         output_repository=bigquery_repository,
-        blob_name=event_actual_blob,
+        sheet_id=event_actual_sheet_id
     )
 
     DERIVED_TABLE_SQL_FILES = [
-        "facility_daily_actual.sql",
-        "facility_event_decile_max_actual.sql",
-        "event_decile_benchmark.sql",
-        "facility_event_planning_snapshot.sql",
-        "facility_special_event_planning_summary.sql",
-        "facility_performance_slots_2026_2027.sql",
+        # "facility_daily_actual.sql",
+        # "facility_event_decile_max_actual.sql",
+        # "event_decile_benchmark.sql",
+        # "facility_event_planning_snapshot.sql",
+        # "facility_special_event_planning_summary.sql",
+        # "facility_performance_slots_2026_2027.sql",
     ]
 
     refresh_derived_tables(DERIVED_TABLE_SQL_FILES, bigquery_repository)

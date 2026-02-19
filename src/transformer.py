@@ -36,18 +36,11 @@ class EventActualTransformer:
     def _normalize_daily_result(self, series: pd.Series) -> pd.Series:
         s = series.astype(str).str.strip()
         s = s.replace(self.NORMALIZE_REPLACEMENTS)
-        return pd.to_numeric(s, errors="coerce").astype("Int64")
+        return pd.to_numeric(s, errors="coerce").round().astype("Int64")
 
-    def _transform_sheet(
-        self, excel_file: pd.ExcelFile, sheet_name: str
-    ) -> pd.DataFrame:
-
-        df = pd.read_excel(
-            excel_file,
-            sheet_name=sheet_name,
-            header=self.HEADER_ROW,
-        )
-
+    def _transform_sheet(self, df: pd.DataFrame, sheet_name: str) -> pd.DataFrame:
+        df.columns = df.iloc[self.HEADER_ROW]
+        df = df.iloc[self.HEADER_ROW + 1 :].reset_index(drop=True)
         df = df.iloc[:, 1:]
 
         key_cols = df.columns[: self.KEY_COLUMN_COUNT]
@@ -64,15 +57,17 @@ class EventActualTransformer:
 
         return df_long
 
-    def transform(self, excel_file: pd.ExcelFile) -> pd.DataFrame:
+    def transform(self, excel_file: dict[str, pd.DataFrame]) -> pd.DataFrame:
         all_sheet_data: list[pd.DataFrame] = []
 
-        for sheet_name in excel_file.sheet_names:
-            transformed = self._transform_sheet(excel_file, str(sheet_name))
+        for sheet_name, df in excel_file.items():
+            transformed = self._transform_sheet(df, str(sheet_name))
             all_sheet_data.append(transformed)
 
         df = pd.concat(all_sheet_data, ignore_index=True)
         df = df.rename(columns=self.COLUMN_MAPPING)
+
+        df = df[df["daily_result_raw"].astype(str).str.strip().replace("nan", "") != ""]
 
         return (
             df.dropna(subset=["daily_result_raw"])
