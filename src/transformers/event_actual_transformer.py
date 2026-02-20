@@ -1,7 +1,13 @@
 import pandas as pd
 
+from src.schemas.venue_performance_schema import VENUE_PERFORMANCE_SCHEMA
+from src.transformers.base_transformer import BaseTransformer
 
-class EventActualTransformer:
+
+class EventActualTransformer(BaseTransformer):
+    bq_table_name = "venue_performance"
+    bq_schema = VENUE_PERFORMANCE_SCHEMA
+
     HEADER_ROW = 3
     KEY_COLUMN_COUNT = 13
 
@@ -57,10 +63,10 @@ class EventActualTransformer:
 
         return df_long
 
-    def transform(self, excel_file: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    def transform(self, data: dict[str, pd.DataFrame]) -> pd.DataFrame:
         all_sheet_data: list[pd.DataFrame] = []
 
-        for sheet_name, df in excel_file.items():
+        for sheet_name, df in data.items():
             transformed = self._transform_sheet(df, str(sheet_name))
             all_sheet_data.append(transformed)
 

@@ -64,7 +64,7 @@ LEFT JOIN `digital-well-456700-i9.docomo_eventActual.date_master_2025_2026` AS d
     ON v_p.date = d_m.date
 INNER JOIN `digital-well-456700-i9.docomo_eventActual.facility_master` AS f_m
     ON TRIM(v_p.facility_name) = TRIM(f_m.display_facility_name)
-INNER JOIN `digital-well-456700-i9.docomo_eventActual.facility_master_statistics` AS f_m_s
+INNER JOIN `digital-well-456700-i9.docomo_eventActual.facility_statistics_master` AS f_m_s
     ON TRIM(v_p.facility_name) = TRIM(f_m_s.display_facility_name)
 GROUP BY
     ALL

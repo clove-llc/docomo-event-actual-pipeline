@@ -17,7 +17,7 @@ GROUP BY
     SELECT
         *
     FROM `docomo_eventActual.facility_master` AS f
-    CROSS JOIN `docomo_event_actual_2026.date_master_2026_2027` AS d
+    CROSS JOIN `docomo_eventActual.date_master_2026_2027` AS d
 )
 
 SELECT
