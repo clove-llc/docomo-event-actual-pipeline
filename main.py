@@ -5,7 +5,11 @@ import google.auth
 from google.cloud import bigquery
 from google.oauth2.service_account import Credentials
 
-from src.config.config import get_settings
+from src.config.config import (
+    DIMENSION_TABLE_SQL_FILES,
+    FACT_TABLE_SQL_FILES,
+    get_settings,
+)
 from src.config.logging_config import setup_logging
 from src.schemas.date_master_schema import DATE_MASTER_SCHEMA
 from src.schemas.facility_daily_deviation_zscore_schema import (
@@ -36,7 +40,7 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     (
         app_env,
-        should_update_all_masters,
+        should_update_all_dimensions,
         project_id,
         facility_master_sheet_id,
         date_master_2025_2026_sheet_id,
@@ -66,7 +70,7 @@ def main() -> None:
     bigquery_repository = BigQueryRepository(bq_client, "docomo_eventActual")
 
     # ----- ディメンションテーブルの更新 -----
-    if should_update_all_masters:
+    if should_update_all_dimensions:
         logger.info("関連マスタを全て更新します。")
 
         run_pipeline(
@@ -141,6 +145,9 @@ def main() -> None:
             ),
         )
 
+        # ----- ディメンションテーブルに関連するテーブルの更新 -----
+        refresh_derived_tables(DIMENSION_TABLE_SQL_FILES, bigquery_repository)
+
     # ----- ファクトテーブルの更新 -----
     run_pipeline(
         name="実績データ",
@@ -150,17 +157,8 @@ def main() -> None:
         transformer=EventActualTransformer(),
     )
 
-    # ----- 関連テーブルの更新 -----
-    DERIVED_TABLE_SQL_FILES = [
-        "facility_daily_actual.sql",
-        "facility_event_decile_max_actual.sql",
-        "event_decile_benchmark.sql",
-        "facility_event_planning_snapshot.sql",
-        "facility_special_event_planning_summary.sql",
-        "facility_performance_slots_2026_2027.sql",
-    ]
-
-    refresh_derived_tables(DERIVED_TABLE_SQL_FILES, bigquery_repository)
+    # ----- ファクトテーブルに関連するテーブルの更新 -----
+    refresh_derived_tables(FACT_TABLE_SQL_FILES, bigquery_repository)
 
 
 if __name__ == "__main__":

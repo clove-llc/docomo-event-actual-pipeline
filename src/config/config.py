@@ -4,6 +4,21 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
+DIMENSION_TABLE_SQL_FILES = [
+    "facility_event_decile_master",
+    "facility_monthly_weekday_dateflag_deviation_zscore",
+    "facility_monthly_dateflag_deviation_zscore",
+]
+
+FACT_TABLE_SQL_FILES = [
+    "facility_daily_actual.sql",
+    "facility_event_decile_max_actual.sql",
+    "event_decile_benchmark.sql",
+    "facility_event_planning_snapshot.sql",
+    "facility_special_event_planning_summary.sql",
+    "facility_performance_slots_2026_2027.sql",
+]
+
 
 def is_enabled(env_var_name: str) -> bool:
     val = os.getenv(env_var_name, "false").lower()
@@ -18,7 +33,7 @@ def get_settings():
     load_dotenv()
 
     app_env = os.getenv("APP_ENV")
-    should_update_all_masters = is_enabled("SHOULD_UPDATE_ALL_MASTERS")
+    should_update_all_dimensions = is_enabled("SHOULD_UPDATE_ALL_DIMENSIONS")
     project_id = os.getenv("PROJECT_ID")
 
     facility_master_sheet_id = os.getenv("FACILITY_MASTER_SHEET_ID")
@@ -65,7 +80,7 @@ def get_settings():
 
     return (
         app_env,
-        should_update_all_masters,
+        should_update_all_dimensions,
         project_id,
         facility_master_sheet_id,
         date_master_2025_2026_sheet_id,
