@@ -5,10 +5,20 @@ from dotenv import load_dotenv
 logger = logging.getLogger(__name__)
 
 
+def is_enabled(env_var_name: str) -> bool:
+    val = os.getenv(env_var_name, "false").lower()
+
+    if val == "true":
+        return True
+
+    return False
+
+
 def get_settings():
     load_dotenv()
 
     app_env = os.getenv("APP_ENV")
+    should_update_all_masters = is_enabled("SHOULD_UPDATE_ALL_MASTERS")
     project_id = os.getenv("PROJECT_ID")
 
     facility_master_sheet_id = os.getenv("FACILITY_MASTER_SHEET_ID")
@@ -55,6 +65,7 @@ def get_settings():
 
     return (
         app_env,
+        should_update_all_masters,
         project_id,
         facility_master_sheet_id,
         date_master_2025_2026_sheet_id,
