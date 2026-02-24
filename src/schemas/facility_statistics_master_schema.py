@@ -1,7 +1,7 @@
 from google.cloud import bigquery
 
 FACILITY_STATISTICS_MASTER_SCHEMA = [
-    bigquery.SchemaField("no", "INTEGER", description="No"),
+    bigquery.SchemaField("no", "INTEGER", description="施設コード"),
     bigquery.SchemaField("display_facility_name", "STRING", description="表示施設名（全体管理簿）"),
     bigquery.SchemaField("1km_total_population_20t", "INTEGER", description="1km|人口総数20T"),
     bigquery.SchemaField("1km_population_0_4_years_old_20t", "INTEGER", description="1km|人口（0-4歳）20T"),

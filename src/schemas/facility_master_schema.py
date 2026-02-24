@@ -1,7 +1,7 @@
 from google.cloud import bigquery
 
 FACILITY_MASTER_SCHEMA = [
-    bigquery.SchemaField("no", "INTEGER", description="No"),
+    bigquery.SchemaField("no", "INTEGER", description="施設コード"),
     bigquery.SchemaField("check", "STRING", description="Check"),
     bigquery.SchemaField(
         "retail_data_sheet_name", "STRING", description="量販店データシートの名称"
