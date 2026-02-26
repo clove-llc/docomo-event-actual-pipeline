@@ -1,4 +1,6 @@
-### x.x 日付実績のクレンジング
+# docomo-event-actual-pipeline
+
+## 1. 日付実績のクレンジング
 
 縦持ち化（melt）後の「日付実績」列に対して、以下のクレンジングを行う。
 
@@ -17,18 +19,3 @@
 
 - クレンジング後の「日付実績」列は **NULL許容整数型（Int64）** とする。
 - NULL は意味を持つ値として保持し、削除しない。
-
----
-
-### x.x Cloud Run Jobsを作成する
-
-```
-gcloud run jobs deploy docomo-event-actual-pipeline-prod \
-    --source . \
-    --tasks 1 \
-    --set-env-vars GCP_PROJECT_ID=[プロジェクトID] \
-    --set-env-vars EVENT_ACTUAL_BLOB=[実績ファイル名] \
-    --max-retries 3 \
-    --region us-central1 \
-    --project=[プロジェクトID]
-```
