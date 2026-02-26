@@ -1,4 +1,4 @@
-CREATE OR REPLACE TABLE `digital-well-456700-i9.docomo_eventActual.facility_event_decile_master` AS
+CREATE OR REPLACE TABLE `{project_id}.docomo_eventActual.facility_event_decile_master` AS
 
 SELECT DISTINCT
   f_m.no,
@@ -21,7 +21,7 @@ SELECT DISTINCT
     WHEN d_m.event_type = 'ブラックフライデー' THEN f_f.black_friday_decile_rank
     ELSE NULL
   END AS decile_rank
-FROM `digital-well-456700-i9.docomo_eventActual.facility_master` AS f_m
-CROSS JOIN `digital-well-456700-i9.docomo_eventActual.date_master_2025_2026` AS d_m
-LEFT JOIN `digital-well-456700-i9.docomo_eventActual.facility_foot_traffic_sum_and_decile_by_flag` AS f_f
+FROM `{project_id}.docomo_eventActual.facility_master` AS f_m
+CROSS JOIN `{project_id}.docomo_eventActual.date_master_2025_2026` AS d_m
+LEFT JOIN `{project_id}.docomo_eventActual.facility_foot_traffic_sum_and_decile_by_flag` AS f_f
   ON f_m.no = f_f.facility_code

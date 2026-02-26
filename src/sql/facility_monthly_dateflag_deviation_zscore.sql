@@ -1,4 +1,4 @@
-CREATE OR REPLACE TABLE `digital-well-456700-i9.docomo_eventActual.facility_monthly_dateflag_deviation_zscore` AS
+CREATE OR REPLACE TABLE `{project_id}.docomo_eventActual.facility_monthly_dateflag_deviation_zscore` AS
 
 SELECT DISTINCT
   f.no,
@@ -6,7 +6,7 @@ SELECT DISTINCT
   f.month,
   f.date_flag,
   ROUND(AVG(avg_z_score), 1) AS avg_z_score
-FROM `digital-well-456700-i9.docomo_eventActual.facility_monthly_weekday_dateflag_deviation_zscore` AS f
+FROM `{project_id}.docomo_eventActual.facility_monthly_weekday_dateflag_deviation_zscore` AS f
 GROUP BY
   f.`no`,
   f.display_facility_name,

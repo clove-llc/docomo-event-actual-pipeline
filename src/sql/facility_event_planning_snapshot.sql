@@ -1,11 +1,11 @@
-CREATE OR REPLACE TABLE `digital-well-456700-i9.docomo_eventActual.facility_event_planning_snapshot` AS
+CREATE OR REPLACE TABLE `{project_id}.docomo_eventActual.facility_event_planning_snapshot` AS
 
 WITH stats_summary AS (
     SELECT
         f_d_a.facility_name,
         -- 施設ごとの直近実績（日付が最大の実績を抽出）
         MAX_BY(f_d_a.actual, f_d_a.date) AS latest_actual
-    FROM `digital-well-456700-i9.docomo_eventActual.facility_daily_actual` AS f_d_a
+    FROM `{project_id}.docomo_eventActual.facility_daily_actual` AS f_d_a
     GROUP BY
         f_d_a.facility_name
 ), base AS (
@@ -36,8 +36,8 @@ WITH stats_summary AS (
             WHEN f_e_d_m_a.max_actual < e_d_b.p90 THEN e_d_b.p90
             ELSE e_d_b.max_performance
         END AS standard_target -- 標準目標
-    FROM `digital-well-456700-i9.docomo_eventActual.event_decile_benchmark` AS e_d_b
-    LEFT JOIN `digital-well-456700-i9.docomo_eventActual.facility_event_decile_max_actual` AS f_e_d_m_a
+    FROM `{project_id}.docomo_eventActual.event_decile_benchmark` AS e_d_b
+    LEFT JOIN `{project_id}.docomo_eventActual.facility_event_decile_max_actual` AS f_e_d_m_a
         ON e_d_b.facility_name = f_e_d_m_a.facility_name
         AND e_d_b.month = f_e_d_m_a.month
         AND e_d_b.week_number_monthly = f_e_d_m_a.week_number_monthly

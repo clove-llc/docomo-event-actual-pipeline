@@ -3,9 +3,10 @@ from pathlib import Path
 import pandas as pd
 
 
-def load_sql(file_name: str) -> str:
+def load_sql(file_name: str, project_id: str) -> str:
     sql_path = Path(__file__).parent / "sql" / file_name
-    return sql_path.read_text(encoding="utf-8")
+
+    return sql_path.read_text(encoding="utf-8").format(project_id=project_id)
 
 
 def to_string(series: pd.Series) -> pd.Series:

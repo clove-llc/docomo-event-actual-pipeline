@@ -146,7 +146,11 @@ def main() -> None:
         )
 
         # ----- ディメンションテーブルに関連するテーブルの更新 -----
-        refresh_derived_tables(DIMENSION_TABLE_SQL_FILES, bigquery_repository)
+        refresh_derived_tables(
+            derived_sql_files=DIMENSION_TABLE_SQL_FILES,
+            output_repository=bigquery_repository,
+            project_id=project_id,
+        )
 
     # ----- ファクトテーブルの更新 -----
     run_pipeline(
@@ -158,7 +162,11 @@ def main() -> None:
     )
 
     # ----- ファクトテーブルに関連するテーブルの更新 -----
-    refresh_derived_tables(FACT_TABLE_SQL_FILES, bigquery_repository)
+    refresh_derived_tables(
+        derived_sql_files=FACT_TABLE_SQL_FILES,
+        output_repository=bigquery_repository,
+        project_id=project_id,
+    )
 
 
 if __name__ == "__main__":

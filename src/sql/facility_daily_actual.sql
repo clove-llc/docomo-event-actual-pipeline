@@ -1,4 +1,4 @@
-CREATE OR REPLACE TABLE `digital-well-456700-i9.docomo_eventActual.facility_daily_actual` AS
+CREATE OR REPLACE TABLE `{project_id}.docomo_eventActual.facility_daily_actual` AS
 
 SELECT
     v_p.no,
@@ -59,12 +59,12 @@ SELECT
     f_m_s.holidays_workers,
     f_m_s.holidays_visitors,
     SUM(v_p.daily_result) AS actual
-FROM `digital-well-456700-i9.docomo_eventActual.venue_performance` AS v_p
-LEFT JOIN `digital-well-456700-i9.docomo_eventActual.date_master_2025_2026` AS d_m
+FROM `{project_id}.docomo_eventActual.venue_performance` AS v_p
+LEFT JOIN `{project_id}.docomo_eventActual.date_master_2025_2026` AS d_m
     ON v_p.date = d_m.date
-INNER JOIN `digital-well-456700-i9.docomo_eventActual.facility_master` AS f_m
+INNER JOIN `{project_id}.docomo_eventActual.facility_master` AS f_m
     ON TRIM(v_p.facility_name) = TRIM(f_m.display_facility_name)
-INNER JOIN `digital-well-456700-i9.docomo_eventActual.facility_statistics_master` AS f_m_s
+INNER JOIN `{project_id}.docomo_eventActual.facility_statistics_master` AS f_m_s
     ON TRIM(v_p.facility_name) = TRIM(f_m_s.display_facility_name)
 GROUP BY
     ALL

@@ -36,13 +36,15 @@ def run_pipeline(
 
 
 def refresh_derived_tables(
-    derived_sql_files: list[str], output_repository: BigQueryRepository
+    derived_sql_files: list[str], output_repository: BigQueryRepository, project_id: str
 ) -> None:
     logger.info("関連テーブルの更新を開始します。")
 
     for sql_file in derived_sql_files:
         logger.info("%sの更新を行います。", sql_file)
-        create_facility_daily_actual_sql = load_sql(sql_file)
+        create_facility_daily_actual_sql = load_sql(
+            file_name=sql_file, project_id=project_id
+        )
         output_repository.execute_query(create_facility_daily_actual_sql)
         logger.info("%sの更新が完了しました。", sql_file)
 

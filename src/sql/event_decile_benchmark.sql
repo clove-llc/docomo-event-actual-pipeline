@@ -1,4 +1,4 @@
-CREATE OR REPLACE TABLE `digital-well-456700-i9.docomo_eventActual.event_decile_benchmark` AS
+CREATE OR REPLACE TABLE `{project_id}.docomo_eventActual.event_decile_benchmark` AS
 
 WITH decile_summary AS (
   SELECT DISTINCT
@@ -32,7 +32,7 @@ WITH decile_summary AS (
         PARTITION BY f_e_d_m_a.event_type, f_e_d_m_a.decile_rank
     )) AS max_performance
 
-    FROM `digital-well-456700-i9.docomo_eventActual.facility_event_decile_max_actual` AS f_e_d_m_a
+    FROM `{project_id}.docomo_eventActual.facility_event_decile_max_actual` AS f_e_d_m_a
 )
 SELECT
     f_e_d_m.facility_name,
@@ -50,7 +50,7 @@ SELECT
     d_s.p75,
     d_s.p90,
     d_s.max_performance
-FROM `digital-well-456700-i9.docomo_eventActual.facility_event_decile_master` AS f_e_d_m
+FROM `{project_id}.docomo_eventActual.facility_event_decile_master` AS f_e_d_m
 LEFT JOIN decile_summary AS d_s
     ON f_e_d_m.event_type = d_s.event_type
     AND f_e_d_m.decile_rank = d_s.decile_rank
