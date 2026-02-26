@@ -139,7 +139,7 @@ def main() -> None:
             output_repository=bigquery_repository,
             sheet_id=facility_foot_traffic_sum_and_decile_by_flag_sheet_id,
             transformer=MasterTransformer(
-                sheet_name="facility_foot_traffic_sum_and_decile_by_flag",
+                sheet_name="施設別日付フラグ別デシルランク",
                 bq_table_name="facility_foot_traffic_sum_and_decile_by_flag",
                 bq_schema=FACILITY_FOOT_TRAFFIC_SUM_AND_DECILE_BY_FLAG_SCHEMA,
             ),
