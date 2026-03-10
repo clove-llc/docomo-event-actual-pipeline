@@ -2,10 +2,10 @@ import pandas as pd
 
 from google.cloud import bigquery
 
-from src.transformers.base_transformer import BaseTransformer
+from src.transformers.transformer_base import TransformerBase
 
 
-class MasterTransformer(BaseTransformer):
+class MasterTransformer(TransformerBase):
     def __init__(
         self,
         sheet_name: str,

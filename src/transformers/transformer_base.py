@@ -6,7 +6,7 @@ from google.cloud import bigquery
 from src.utils import to_boolean, to_date, to_integer, to_string
 
 
-class BaseTransformer(ABC):
+class TransformerBase(ABC):
     sheet_name: str
     bq_table_name: str
     bq_schema: list[bigquery.SchemaField]

@@ -1,10 +1,10 @@
 import logging
 
-from src.bigquery_repository import (
+from src.repositories.bigquery_repository import (
     BigQueryRepository,
 )
-from src.google_spreadsheets_repository import GoogleSpreadSheetsRepository
-from src.transformers.base_transformer import BaseTransformer
+from src.repositories.google_spreadsheets_repository import GoogleSpreadSheetsRepository
+from src.transformers.transformer_base import TransformerBase
 from src.utils import load_sql
 
 
@@ -16,7 +16,7 @@ def run_pipeline(
     input_repository: GoogleSpreadSheetsRepository,
     output_repository: BigQueryRepository,
     sheet_id: str,
-    transformer: BaseTransformer,
+    transformer: TransformerBase,
 ) -> None:
     logger.info("%s 更新処理を開始します。", name)
 
@@ -42,10 +42,8 @@ def refresh_derived_tables(
 
     for sql_file in derived_sql_files:
         logger.info("%sの更新を行います。", sql_file)
-        create_facility_daily_actual_sql = load_sql(
-            file_name=sql_file, project_id=project_id
-        )
-        output_repository.execute_query(create_facility_daily_actual_sql)
+        sql = load_sql(file_name=sql_file, project_id=project_id)
+        output_repository.execute_query(sql)
         logger.info("%sの更新が完了しました。", sql_file)
 
     logger.info("関連テーブルの更新を終了します。")

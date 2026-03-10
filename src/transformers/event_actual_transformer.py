@@ -1,10 +1,10 @@
 import pandas as pd
 
 from src.schemas.venue_performance_schema import VENUE_PERFORMANCE_SCHEMA
-from src.transformers.base_transformer import BaseTransformer
+from src.transformers.transformer_base import TransformerBase
 
 
-class EventActualTransformer(BaseTransformer):
+class EventActualTransformer(TransformerBase):
     bq_table_name = "venue_performance"
     bq_schema = VENUE_PERFORMANCE_SCHEMA
 

@@ -22,8 +22,8 @@ from src.schemas.facility_master_schema import FACILITY_MASTER_SCHEMA
 from src.schemas.facility_statistics_master_schema import (
     FACILITY_STATISTICS_MASTER_SCHEMA,
 )
-from src.google_spreadsheets_repository import GoogleSpreadSheetsRepository
-from src.bigquery_repository import BigQueryRepository
+from src.repositories.google_spreadsheets_repository import GoogleSpreadSheetsRepository
+from src.repositories.bigquery_repository import BigQueryRepository
 from src.transformers.master_transformer import MasterTransformer
 from src.transformers.event_actual_transformer import EventActualTransformer
 
