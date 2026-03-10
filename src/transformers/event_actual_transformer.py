@@ -39,6 +39,10 @@ class EventActualTransformer(TransformerBase):
         "日付実績": "daily_result_raw",
     }
 
+    def __init__(self, name_mapping_df: pd.DataFrame) -> None:
+        super().__init__()
+        self.name_mapping_df = name_mapping_df
+
     def _normalize_daily_result(self, series: pd.Series) -> pd.Series:
         s = series.astype(str).str.strip()
         s = s.replace(self.NORMALIZE_REPLACEMENTS)
@@ -74,6 +78,21 @@ class EventActualTransformer(TransformerBase):
         df = df.rename(columns=self.COLUMN_MAPPING)
 
         df = df[df["daily_result_raw"].astype(str).str.strip().replace("nan", "") != ""]
+
+        # 施設名列をマッピングする
+        df = df.merge(
+            self.name_mapping_df[["original_name", "mapped_name"]],
+            how="left",
+            left_on="facility_name",
+            right_on="original_name",
+        ).drop(columns=["original_name"])
+
+        # マッピング後の施設名が有効な場合は置き換える
+        df["facility_name"] = df["mapped_name"].where(
+            df["mapped_name"].notna() & (df["mapped_name"] != "#N/A"),
+            df["facility_name"],
+        )
+        df = df.drop(columns=["mapped_name"])  # 置き換え後不要なので削除
 
         return (
             df.dropna(subset=["daily_result_raw"])

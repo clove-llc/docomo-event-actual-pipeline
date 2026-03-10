@@ -43,6 +43,7 @@ def main() -> None:
         should_update_all_dimensions,
         project_id,
         facility_master_sheet_id,
+        facility_statistics_master_sheet_id,
         date_master_2025_2026_sheet_id,
         date_master_2026_2027_sheet_id,
         facility_daily_deviation_zscore_sheet_id,
@@ -89,7 +90,7 @@ def main() -> None:
             name="施設統計情報マスタ",
             input_repository=google_spreadsheets_repository,
             output_repository=bigquery_repository,
-            sheet_id=facility_master_sheet_id,
+            sheet_id=facility_statistics_master_sheet_id,
             transformer=MasterTransformer(
                 sheet_name="facility_statistics_master",
                 bq_table_name="facility_statistics_master",
@@ -152,13 +153,20 @@ def main() -> None:
             project_id=project_id,
         )
 
+    facility_master_sheets = google_spreadsheets_repository.fetch_spreadsheets(
+        facility_master_sheet_id
+    )
+
+    facility_name_mapping_df = facility_master_sheets["表記ゆれマスタNo付与"]
+    facility_name_mapping_df.columns = facility_name_mapping_df.iloc[1]
+
     # ----- ファクトテーブルの更新 -----
     run_pipeline(
         name="実績データ",
         input_repository=google_spreadsheets_repository,
         output_repository=bigquery_repository,
         sheet_id=event_actual_sheet_id,
-        transformer=EventActualTransformer(),
+        transformer=EventActualTransformer(facility_name_mapping_df),
     )
 
     # ----- ファクトテーブルに関連するテーブルの更新 -----
