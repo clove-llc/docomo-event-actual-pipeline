@@ -28,13 +28,10 @@ WITH stats_summary AS (
         e_d_b.max_performance, -- デシル区分の最大の実績値
         CASE
             WHEN f_e_d_m_a.max_actual IS NULL OR f_e_d_m_a.max_actual < e_d_b.p50 THEN e_d_b.p50
-            WHEN f_e_d_m_a.max_actual >= e_d_b.max_performance THEN e_d_b.max_performance
-            WHEN f_e_d_m_a.max_actual < e_d_b.p50 THEN e_d_b.p50
             WHEN f_e_d_m_a.max_actual < e_d_b.p60 THEN e_d_b.p60
             WHEN f_e_d_m_a.max_actual < e_d_b.p70 THEN e_d_b.p70
             WHEN f_e_d_m_a.max_actual < e_d_b.p75 THEN e_d_b.p75
-            WHEN f_e_d_m_a.max_actual < e_d_b.p90 THEN e_d_b.p90
-            ELSE e_d_b.max_performance
+            ELSE e_d_b.p90
         END AS standard_target -- 標準目標
     FROM `{project_id}.docomo_eventActual.event_decile_benchmark` AS e_d_b
     LEFT JOIN `{project_id}.docomo_eventActual.facility_event_decile_max_actual` AS f_e_d_m_a
