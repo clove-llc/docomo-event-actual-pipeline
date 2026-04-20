@@ -1,4 +1,4 @@
-CREATE OR REPLACE TABLE `{project_id}.docomo_eventActual.facility_event_decile_max_actual` AS
+CREATE OR REPLACE TABLE `{project_id}.docomo_eventActual.facility_event_decile_avg_actual` AS
 SELECT
     f_d_a.facility_name,
     EXTRACT(MONTH FROM f_d_a.date) AS month,
