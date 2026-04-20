@@ -16,10 +16,13 @@ WITH stats_summary AS (
         e_d_b.month,
         e_d_b.week_number_monthly,
         e_d_b.event_type,
-        f_e_d_m_a.max_actual AS daily_actual,
+        f_e_d_m_a.avg_actual AS daily_actual,
         s_s.latest_actual,
         e_d_b.decile_rank,
-        e_d_b.p25, -- 実績下位25%の実績値
+        e_d_b.p10, -- 実績下位10%の実績値
+        e_d_b.p20, -- 実績下位20%の実績値
+        e_d_b.p30, -- 実績下位30%の実績値
+        e_d_b.p40, -- 実績下位40%の実績値
         e_d_b.p50, -- デシル区分の中央値
         e_d_b.p60, -- 実績上位40%の実績値
         e_d_b.p70, -- 実績上位30%の実績値
@@ -27,14 +30,19 @@ WITH stats_summary AS (
         e_d_b.p90, -- 実績上位10%の実績値
         e_d_b.max_performance, -- デシル区分の最大の実績値
         CASE
-            WHEN f_e_d_m_a.max_actual IS NULL OR f_e_d_m_a.max_actual < e_d_b.p50 THEN e_d_b.p50
-            WHEN f_e_d_m_a.max_actual < e_d_b.p60 THEN e_d_b.p60
-            WHEN f_e_d_m_a.max_actual < e_d_b.p70 THEN e_d_b.p70
-            WHEN f_e_d_m_a.max_actual < e_d_b.p75 THEN e_d_b.p75
-            ELSE e_d_b.p90
+            WHEN f_e_d_m_a.avg_actual IS NULL OR f_e_d_m_a.avg_actual < e_d_b.p10 THEN e_d_b.p10
+            WHEN f_e_d_m_a.avg_actual < e_d_b.p20 THEN e_d_b.p20
+            WHEN f_e_d_m_a.avg_actual < e_d_b.p30 THEN e_d_b.p30
+            WHEN f_e_d_m_a.avg_actual < e_d_b.p40 THEN e_d_b.p40
+            WHEN f_e_d_m_a.avg_actual < e_d_b.p50 THEN e_d_b.p50
+            WHEN f_e_d_m_a.avg_actual < e_d_b.p60 THEN e_d_b.p60
+            WHEN f_e_d_m_a.avg_actual < e_d_b.p70 THEN e_d_b.p70
+            WHEN f_e_d_m_a.avg_actual < e_d_b.p75 THEN e_d_b.p75
+            WHEN f_e_d_m_a.avg_actual < e_d_b.p90 THEN e_d_b.p90
+            ELSE e_d_b.max_performance
         END AS standard_target -- 標準目標
     FROM `{project_id}.docomo_eventActual.event_decile_benchmark` AS e_d_b
-    LEFT JOIN `{project_id}.docomo_eventActual.facility_event_decile_max_actual` AS f_e_d_m_a
+    LEFT JOIN `{project_id}.docomo_eventActual.facility_event_decile_avg_actual` AS f_e_d_m_a
         ON e_d_b.facility_name = f_e_d_m_a.facility_name
         AND e_d_b.month = f_e_d_m_a.month
         AND e_d_b.week_number_monthly = f_e_d_m_a.week_number_monthly
@@ -46,11 +54,15 @@ WITH stats_summary AS (
 SELECT
     *,
     CASE
-        WHEN standard_target >= max_performance THEN max_performance
-        WHEN standard_target < p60 THEN p60
-        WHEN standard_target < p70 THEN p70
-        WHEN standard_target < p75 THEN p75
-        WHEN standard_target < p90 THEN p90
-        ELSE max_performance
+        WHEN base.standard_target >= base.max_performance THEN base.max_performance
+        WHEN base.standard_target < base.p20 THEN base.p20
+        WHEN base.standard_target < base.p30 THEN base.p30
+        WHEN base.standard_target < base.p40 THEN base.p40
+        WHEN base.standard_target < base.p50 THEN base.p50
+        WHEN base.standard_target < base.p60 THEN base.p60
+        WHEN base.standard_target < base.p70 THEN base.p70
+        WHEN base.standard_target < base.p75 THEN base.p75
+        WHEN base.standard_target < base.p90 THEN base.p90
+        ELSE base.max_performance
     END AS challenge_target
 FROM base;

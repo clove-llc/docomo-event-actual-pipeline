@@ -14,10 +14,13 @@ WITH stats_summary AS (
         e_d_b.po_level,
         e_d_b.branch_office,
         e_d_b.event_type,
-        ROUND(AVG(f_e_d_m_a.max_actual)) AS daily_actual,
+        ROUND(AVG(f_e_d_m_a.avg_actual)) AS daily_actual,
         ROUND(AVG(s_s.latest_actual)) AS latest_actual,
         ROUND(AVG(e_d_b.decile_rank)) AS decile_rank,
-        ROUND(AVG(e_d_b.p25)) AS p25, -- 実績下位25%の実績値
+        ROUND(AVG(e_d_b.p10)) AS p10, -- 実績下位10%の実績値
+        ROUND(AVG(e_d_b.p20)) AS p20, -- 実績下位20%の実績値
+        ROUND(AVG(e_d_b.p30)) AS p30, -- 実績下位30%の実績値
+        ROUND(AVG(e_d_b.p40)) AS p40, -- 実績下位40%の実績値
         ROUND(AVG(e_d_b.p50)) AS p50, -- デシル区分の中央値
         ROUND(AVG(e_d_b.p60)) AS p60, -- 実績上位40%の実績値
         ROUND(AVG(e_d_b.p70)) AS p70, -- 実績上位30%の実績値
@@ -25,7 +28,7 @@ WITH stats_summary AS (
         ROUND(AVG(e_d_b.p90)) AS p90, -- 実績上位10%の実績値
         ROUND(AVG(e_d_b.max_performance)) AS max_performance, -- デシル区分の最大の実績値
     FROM `{project_id}.docomo_eventActual.event_decile_benchmark` AS e_d_b
-    LEFT JOIN `{project_id}.docomo_eventActual.facility_event_decile_max_actual` AS f_e_d_m_a
+    LEFT JOIN `{project_id}.docomo_eventActual.facility_event_decile_avg_actual` AS f_e_d_m_a
         ON e_d_b.facility_name = f_e_d_m_a.facility_name
         AND e_d_b.month = f_e_d_m_a.month
         AND e_d_b.week_number_monthly = f_e_d_m_a.week_number_monthly
@@ -43,8 +46,10 @@ WITH stats_summary AS (
     SELECT
         *,
         CASE
-            WHEN daily_actual IS NULL OR daily_actual < p50 THEN p50
-            WHEN daily_actual >= max_performance THEN max_performance
+            WHEN daily_actual IS NULL OR daily_actual < p10 THEN p10
+            WHEN daily_actual < p20 THEN p20
+            WHEN daily_actual < p30 THEN p30
+            WHEN daily_actual < p40 THEN p40
             WHEN daily_actual < p50 THEN p50
             WHEN daily_actual < p60 THEN p60
             WHEN daily_actual < p70 THEN p70
@@ -58,6 +63,10 @@ SELECT
     *,
     CASE
         WHEN standard_target >= max_performance THEN max_performance
+        WHEN standard_target < p20 THEN p20
+        WHEN standard_target < p30 THEN p30
+        WHEN standard_target < p40 THEN p40
+        WHEN standard_target < p50 THEN p50
         WHEN standard_target < p60 THEN p60
         WHEN standard_target < p70 THEN p70
         WHEN standard_target < p75 THEN p75
