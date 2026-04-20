@@ -45,18 +45,21 @@ WITH stats_summary AS (
 ), challenge_standard_summary AS (
     SELECT
         *,
-        CASE
-            WHEN daily_actual IS NULL OR daily_actual < p10 THEN p10
-            WHEN daily_actual < p20 THEN p20
-            WHEN daily_actual < p30 THEN p30
-            WHEN daily_actual < p40 THEN p40
-            WHEN daily_actual < p50 THEN p50
-            WHEN daily_actual < p60 THEN p60
-            WHEN daily_actual < p70 THEN p70
-            WHEN daily_actual < p75 THEN p75
-            WHEN daily_actual < p90 THEN p90
-            ELSE max_performance
-        END AS standard_target -- 標準目標
+        GREATEST(
+            CASE
+                WHEN daily_actual IS NULL OR daily_actual < p10 THEN p10
+                WHEN daily_actual < p20 THEN p20
+                WHEN daily_actual < p30 THEN p30
+                WHEN daily_actual < p40 THEN p40
+                WHEN daily_actual < p50 THEN p50
+                WHEN daily_actual < p60 THEN p60
+                WHEN daily_actual < p70 THEN p70
+                WHEN daily_actual < p75 THEN p75
+                WHEN daily_actual < p90 THEN p90
+                ELSE max_performance
+            END,
+            1 -- 0の場合は1にする（下限値を1に設定）
+        ) AS standard_target -- 標準目標
     FROM base
 )
 SELECT

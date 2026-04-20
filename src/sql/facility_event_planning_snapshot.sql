@@ -29,18 +29,21 @@ WITH stats_summary AS (
         e_d_b.p75, -- 実績上位25%の実績値
         e_d_b.p90, -- 実績上位10%の実績値
         e_d_b.max_performance, -- デシル区分の最大の実績値
-        CASE
-            WHEN f_e_d_m_a.avg_actual IS NULL OR f_e_d_m_a.avg_actual < e_d_b.p10 THEN e_d_b.p10
-            WHEN f_e_d_m_a.avg_actual < e_d_b.p20 THEN e_d_b.p20
-            WHEN f_e_d_m_a.avg_actual < e_d_b.p30 THEN e_d_b.p30
-            WHEN f_e_d_m_a.avg_actual < e_d_b.p40 THEN e_d_b.p40
-            WHEN f_e_d_m_a.avg_actual < e_d_b.p50 THEN e_d_b.p50
-            WHEN f_e_d_m_a.avg_actual < e_d_b.p60 THEN e_d_b.p60
-            WHEN f_e_d_m_a.avg_actual < e_d_b.p70 THEN e_d_b.p70
-            WHEN f_e_d_m_a.avg_actual < e_d_b.p75 THEN e_d_b.p75
-            WHEN f_e_d_m_a.avg_actual < e_d_b.p90 THEN e_d_b.p90
-            ELSE e_d_b.max_performance
-        END AS standard_target -- 標準目標
+        GREATEST(
+            CASE
+                WHEN f_e_d_m_a.avg_actual IS NULL OR f_e_d_m_a.avg_actual < e_d_b.p10 THEN e_d_b.p10
+                WHEN f_e_d_m_a.avg_actual < e_d_b.p20 THEN e_d_b.p20
+                WHEN f_e_d_m_a.avg_actual < e_d_b.p30 THEN e_d_b.p30
+                WHEN f_e_d_m_a.avg_actual < e_d_b.p40 THEN e_d_b.p40
+                WHEN f_e_d_m_a.avg_actual < e_d_b.p50 THEN e_d_b.p50
+                WHEN f_e_d_m_a.avg_actual < e_d_b.p60 THEN e_d_b.p60
+                WHEN f_e_d_m_a.avg_actual < e_d_b.p70 THEN e_d_b.p70
+                WHEN f_e_d_m_a.avg_actual < e_d_b.p75 THEN e_d_b.p75
+                WHEN f_e_d_m_a.avg_actual < e_d_b.p90 THEN e_d_b.p90
+                ELSE e_d_b.max_performance
+            END,
+            1 -- 0の場合は1にする（下限値を1に設定）
+        ) AS standard_target
     FROM `{project_id}.docomo_eventActual.event_decile_benchmark` AS e_d_b
     LEFT JOIN `{project_id}.docomo_eventActual.facility_event_decile_avg_actual` AS f_e_d_m_a
         ON e_d_b.facility_name = f_e_d_m_a.facility_name
