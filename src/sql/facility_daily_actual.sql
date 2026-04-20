@@ -15,6 +15,7 @@ SELECT
     d_m.weekday_name,
     d_m.weekday_holiday_with_holiday,
     d_m.date_type,
+    d_m.event_type,
     f_m.has_ds_or_satellite_bool,
     f_m.ds_bool,
     f_m.st_bool,
