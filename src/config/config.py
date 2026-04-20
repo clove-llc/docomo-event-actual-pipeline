@@ -12,7 +12,7 @@ DIMENSION_TABLE_SQL_FILES = [
 
 FACT_TABLE_SQL_FILES = [
     "facility_daily_actual.sql",
-    "facility_event_decile_max_actual.sql",
+    "facility_event_decile_avg_actual.sql",
     "event_decile_benchmark.sql",
     "facility_event_planning_snapshot.sql",
     "facility_special_event_planning_summary.sql",
