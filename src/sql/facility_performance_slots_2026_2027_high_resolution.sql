@@ -8,7 +8,7 @@ WITH facility_event_planning_snapshot_monthly AS (
         ROUND(AVG(f_e_p_s.standard_target)) AS avg_standard_target,
         ROUND(AVG(f_e_p_s.challenge_target)) AS avg_challenge_target,
         ROUND(AVG(f_e_p_s.p50)) AS avg_p50,
-FROM `{project_id}.docomo_eventActual.facility_event_planning_snapshot_high_resolution` AS f_e_p_s
+FROM `{project_id}.docomo_eventActual.facility_event_planning_high_resolution` AS f_e_p_s
 GROUP BY
     f_e_p_s.facility_name,
     f_e_p_s.month,
@@ -48,7 +48,7 @@ SELECT
         f_m_3h.avg_z_score,
         f_m_we.avg_z_score)) AS p50_seasonal
 FROM base AS b
-LEFT JOIN `{project_id}.docomo_eventActual.facility_event_planning_snapshot_high_resolution` AS f_e_p_s
+LEFT JOIN `{project_id}.docomo_eventActual.facility_event_planning_high_resolution` AS f_e_p_s
     ON
         TRIM(b.display_facility_name) = TRIM(f_e_p_s.facility_name)
         AND EXTRACT(MONTH FROM b.date) = f_e_p_s.month
