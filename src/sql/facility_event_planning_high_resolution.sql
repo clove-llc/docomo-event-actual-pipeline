@@ -1,4 +1,4 @@
-CREATE OR REPLACE TABLE `{project_id}.docomo_eventActual.facility_event_planning_snapshot_min_p50` AS
+CREATE OR REPLACE TABLE `{project_id}.docomo_eventActual.facility_event_planning_high_resolution` AS
 
 WITH stats_summary AS (
     SELECT
@@ -19,7 +19,10 @@ WITH stats_summary AS (
         f_e_d_m_a.avg_actual AS daily_actual,
         s_s.latest_actual,
         e_d_b.decile_rank,
-        e_d_b.p25, -- 実績下位25%の実績値
+        e_d_b.p10, -- 実績下位10%の実績値
+        e_d_b.p20, -- 実績下位20%の実績値
+        e_d_b.p30, -- 実績下位30%の実績値
+        e_d_b.p40, -- 実績下位40%の実績値
         e_d_b.p50, -- デシル区分の中央値
         e_d_b.p60, -- 実績上位40%の実績値
         e_d_b.p70, -- 実績上位30%の実績値
@@ -28,7 +31,11 @@ WITH stats_summary AS (
         e_d_b.max_performance, -- デシル区分の最大の実績値
         GREATEST(
             CASE
-                WHEN f_e_d_m_a.avg_actual IS NULL OR f_e_d_m_a.avg_actual < e_d_b.p50 THEN e_d_b.p50
+                WHEN f_e_d_m_a.avg_actual IS NULL OR f_e_d_m_a.avg_actual < e_d_b.p10 THEN e_d_b.p10
+                WHEN f_e_d_m_a.avg_actual < e_d_b.p20 THEN e_d_b.p20
+                WHEN f_e_d_m_a.avg_actual < e_d_b.p30 THEN e_d_b.p30
+                WHEN f_e_d_m_a.avg_actual < e_d_b.p40 THEN e_d_b.p40
+                WHEN f_e_d_m_a.avg_actual < e_d_b.p50 THEN e_d_b.p50
                 WHEN f_e_d_m_a.avg_actual < e_d_b.p60 THEN e_d_b.p60
                 WHEN f_e_d_m_a.avg_actual < e_d_b.p70 THEN e_d_b.p70
                 WHEN f_e_d_m_a.avg_actual < e_d_b.p75 THEN e_d_b.p75
@@ -49,6 +56,10 @@ WITH stats_summary AS (
 SELECT
     *,
     CASE
+        WHEN base.standard_target < base.p20 THEN base.p20
+        WHEN base.standard_target < base.p30 THEN base.p30
+        WHEN base.standard_target < base.p40 THEN base.p40
+        WHEN base.standard_target < base.p50 THEN base.p50
         WHEN base.standard_target < base.p60 THEN base.p60
         WHEN base.standard_target < base.p70 THEN base.p70
         WHEN base.standard_target < base.p75 THEN base.p75

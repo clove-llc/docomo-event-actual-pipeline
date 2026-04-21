@@ -1,4 +1,4 @@
-CREATE OR REPLACE TABLE `{project_id}.docomo_eventActual.facility_special_event_planning_summary_min_p50` AS
+CREATE OR REPLACE TABLE `{project_id}.docomo_eventActual.facility_special_event_planning_high_resolution` AS
 
 WITH stats_summary AS (
     SELECT
@@ -17,7 +17,10 @@ WITH stats_summary AS (
         ROUND(AVG(f_e_d_m_a.avg_actual)) AS daily_actual,
         ROUND(AVG(s_s.latest_actual)) AS latest_actual,
         ROUND(AVG(e_d_b.decile_rank)) AS decile_rank,
-        ROUND(AVG(e_d_b.p25)) AS p25, -- 実績下位25%の実績値
+        ROUND(AVG(e_d_b.p10)) AS p10, -- 実績下位10%の実績値
+        ROUND(AVG(e_d_b.p20)) AS p20, -- 実績下位20%の実績値
+        ROUND(AVG(e_d_b.p30)) AS p30, -- 実績下位30%の実績値
+        ROUND(AVG(e_d_b.p40)) AS p40, -- 実績下位40%の実績値
         ROUND(AVG(e_d_b.p50)) AS p50, -- デシル区分の中央値
         ROUND(AVG(e_d_b.p60)) AS p60, -- 実績上位40%の実績値
         ROUND(AVG(e_d_b.p70)) AS p70, -- 実績上位30%の実績値
@@ -44,7 +47,11 @@ WITH stats_summary AS (
         *,
         GREATEST(
             CASE
-                WHEN daily_actual IS NULL OR daily_actual < p50 THEN p50
+                WHEN daily_actual IS NULL OR daily_actual < p10 THEN p10
+                WHEN daily_actual < p20 THEN p20
+                WHEN daily_actual < p30 THEN p30
+                WHEN daily_actual < p40 THEN p40
+                WHEN daily_actual < p50 THEN p50
                 WHEN daily_actual < p60 THEN p60
                 WHEN daily_actual < p70 THEN p70
                 WHEN daily_actual < p75 THEN p75
@@ -57,6 +64,10 @@ WITH stats_summary AS (
 SELECT
     *,
     CASE
+        WHEN standard_target < p20 THEN p20
+        WHEN standard_target < p30 THEN p30
+        WHEN standard_target < p40 THEN p40
+        WHEN standard_target < p50 THEN p50
         WHEN standard_target < p60 THEN p60
         WHEN standard_target < p70 THEN p70
         WHEN standard_target < p75 THEN p75
