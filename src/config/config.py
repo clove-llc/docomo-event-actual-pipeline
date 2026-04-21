@@ -17,6 +17,9 @@ FACT_TABLE_SQL_FILES = [
     "facility_event_planning_snapshot.sql",
     "facility_special_event_planning_summary.sql",
     "facility_performance_slots_2026_2027.sql",
+    "facility_event_planning_snapshot_min_p50.sql",
+    "facility_special_event_planning_summary_min_p50.sql",
+    "facility_performance_slots_2026_2027_min_p50.sql",
 ]
 
 
