@@ -13,6 +13,10 @@ WITH decile_summary AS (
         PARTITION BY f_e_d_m_a.event_type, f_e_d_m_a.decile_rank
     )) AS p20,
 
+    ROUND(PERCENTILE_CONT(CAST(f_e_d_m_a.avg_actual AS FLOAT64), 0.25) OVER (
+        PARTITION BY f_e_d_m_a.event_type, f_e_d_m_a.decile_rank
+    )) AS p25,
+
     ROUND(PERCENTILE_CONT(CAST(f_e_d_m_a.avg_actual AS FLOAT64), 0.30) OVER (
         PARTITION BY f_e_d_m_a.event_type, f_e_d_m_a.decile_rank
     )) AS p30,
@@ -58,6 +62,7 @@ SELECT
     d_s.decile_rank,
     d_s.p10,
     d_s.p20,
+    d_s.p25,
     d_s.p30,
     d_s.p40,
     d_s.p50,
