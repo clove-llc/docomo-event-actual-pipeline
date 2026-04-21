@@ -55,8 +55,7 @@ WITH stats_summary AS (
                 WHEN daily_actual < p60 THEN p60
                 WHEN daily_actual < p70 THEN p70
                 WHEN daily_actual < p75 THEN p75
-                WHEN daily_actual < p90 THEN p90
-                ELSE max_performance
+                ELSE p90
             END,
             1 -- 0の場合は1にする（下限値を1に設定）
         ) AS standard_target -- 標準目標
@@ -65,7 +64,6 @@ WITH stats_summary AS (
 SELECT
     *,
     CASE
-        WHEN standard_target >= max_performance THEN max_performance
         WHEN standard_target < p20 THEN p20
         WHEN standard_target < p30 THEN p30
         WHEN standard_target < p40 THEN p40

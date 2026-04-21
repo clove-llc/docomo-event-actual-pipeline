@@ -39,8 +39,7 @@ WITH stats_summary AS (
                 WHEN f_e_d_m_a.avg_actual < e_d_b.p60 THEN e_d_b.p60
                 WHEN f_e_d_m_a.avg_actual < e_d_b.p70 THEN e_d_b.p70
                 WHEN f_e_d_m_a.avg_actual < e_d_b.p75 THEN e_d_b.p75
-                WHEN f_e_d_m_a.avg_actual < e_d_b.p90 THEN e_d_b.p90
-                ELSE e_d_b.max_performance
+                ELSE e_d_b.p90
             END,
             1 -- 0の場合は1にする（下限値を1に設定）
         ) AS standard_target
@@ -57,7 +56,6 @@ WITH stats_summary AS (
 SELECT
     *,
     CASE
-        WHEN base.standard_target >= base.max_performance THEN base.max_performance
         WHEN base.standard_target < base.p20 THEN base.p20
         WHEN base.standard_target < base.p30 THEN base.p30
         WHEN base.standard_target < base.p40 THEN base.p40
