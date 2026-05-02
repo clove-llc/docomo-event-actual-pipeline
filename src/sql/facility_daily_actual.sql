@@ -1,13 +1,10 @@
-CREATE OR REPLACE TABLE `{project_id}.docomo_eventActual.facility_daily_actual` AS
-
-SELECT
-    v_p.no,
-    v_p.facility_name,
-    v_p.regional_office_name,
-    v_p.branch_name,
-    v_p.floor_category,
-    v_p.space_name,
-    v_p.area_group,
+CREATE
+OR REPLACE TABLE `{project_id}.docomo_eventActual.facility_daily_actual` AS
+SELECT DISTINCT
+    f_m.display_facility_name AS facility_name,
+    f_m.po_level,
+    f_m.regional_office,
+    f_m.branch_office,
     d_m.date,
     d_m.year_month,
     d_m.week_number_monthly,
@@ -16,56 +13,8 @@ SELECT
     d_m.weekday_holiday_with_holiday,
     d_m.date_type,
     d_m.event_type,
-    f_m.has_ds_or_satellite_bool,
-    f_m.ds_bool,
-    f_m.st_bool,
-    f_m.retail_bool,
-    f_m.softbank_bool,
-    f_m.au_bool,
-    f_m.rakuten_mobile_bool,
-    f_m_s.all_day_ttl,
-    f_m_s.all_day_male,
-    f_m_s.all_day_women,
-    f_m_s.all_day_20s,
-    f_m_s.all_day_30s,
-    f_m_s.all_day_40s,
-    f_m_s.all_day_50s,
-    f_m_s.all_day_60s,
-    f_m_s.all_day_ages_70_and_over,
-    f_m_s.full_day_resident,
-    f_m_s.full_time_employee,
-    f_m_s.all_day_visitors,
-    f_m_s.weekdays_ttl,
-    f_m_s.weekdays_men,
-    f_m_s.weekdays_women,
-    f_m_s.weekdays_20s,
-    f_m_s.weekdays_30s,
-    f_m_s.weekdays_40s,
-    f_m_s.weekdays_50s,
-    f_m_s.weekdays_60s,
-    f_m_s.weekdays_70_years_old_and_over,
-    f_m_s.weekdays_resident,
-    f_m_s.weekdays_worker,
-    f_m_s.weekdays_visitors,
-    f_m_s.holidays_ttl,
-    f_m_s.holidays_men,
-    f_m_s.holidays_women,
-    f_m_s.holiday_20s,
-    f_m_s.holidays_30s,
-    f_m_s.holiday_40s,
-    f_m_s.holidays_50s,
-    f_m_s.holidays_60s,
-    f_m_s.holidays_70_years_old_and_over,
-    f_m_s.holidays_residents,
-    f_m_s.holidays_workers,
-    f_m_s.holidays_visitors,
-    SUM(v_p.daily_result) AS actual
-FROM `{project_id}.docomo_eventActual.venue_performance` AS v_p
-LEFT JOIN `{project_id}.docomo_eventActual.date_master_2025_2026` AS d_m
-    ON v_p.date = d_m.date
-INNER JOIN `{project_id}.docomo_eventActual.facility_master` AS f_m
-    ON TRIM(v_p.facility_name) = TRIM(f_m.display_facility_name)
-INNER JOIN `{project_id}.docomo_eventActual.facility_statistics_master` AS f_m_s
-    ON TRIM(v_p.facility_name) = TRIM(f_m_s.display_facility_name)
-GROUP BY
-    ALL
+    v_p.daily_result AS actual
+FROM
+    `{project_id}.docomo_eventActual.facility_master` AS f_m
+    INNER JOIN `{project_id}.docomo_eventActual.venue_performance` AS v_p ON TRIM(f_m.display_facility_name) = TRIM(v_p.facility_name)
+    LEFT JOIN `{project_id}.docomo_eventActual.date_master_2025_2026` AS d_m ON v_p.date = d_m.date

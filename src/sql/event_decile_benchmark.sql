@@ -117,7 +117,7 @@ SELECT
     f_e_d_m.month,
     f_e_d_m.week_number_monthly,
     f_e_d_m.event_type,
-    d_s.decile_rank,
+    f_e_d_m.decile_rank,
     d_s.p10,
     d_s.p20,
     d_s.p25,
