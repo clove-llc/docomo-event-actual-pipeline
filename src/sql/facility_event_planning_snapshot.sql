@@ -15,7 +15,7 @@ WITH stats_summary AS (
         e_d_b.branch_office,
         e_d_b.month,
         e_d_b.week_number_monthly,
-        e_d_b.event_type,
+        e_d_b.date_flag,
         f_e_d_m_a.avg_actual AS daily_actual,
         s_s.latest_actual,
         e_d_b.decile_rank,
@@ -41,7 +41,7 @@ WITH stats_summary AS (
         ON e_d_b.facility_name = f_e_d_m_a.facility_name
         AND e_d_b.month = f_e_d_m_a.month
         AND e_d_b.week_number_monthly = f_e_d_m_a.week_number_monthly
-        AND e_d_b.event_type = f_e_d_m_a.event_type
+        AND e_d_b.date_flag = f_e_d_m_a.date_flag
         AND e_d_b.decile_rank = f_e_d_m_a.decile_rank
     LEFT JOIN stats_summary AS s_s
         ON e_d_b.facility_name = s_s.facility_name

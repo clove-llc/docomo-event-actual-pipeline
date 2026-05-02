@@ -13,7 +13,7 @@ WITH stats_summary AS (
         e_d_b.facility_name,
         e_d_b.po_level,
         e_d_b.branch_office,
-        e_d_b.event_type,
+        e_d_b.date_flag,
         ROUND(AVG(f_e_d_m_a.avg_actual)) AS daily_actual,
         ROUND(AVG(s_s.latest_actual)) AS latest_actual,
         ROUND(AVG(e_d_b.decile_rank)) AS decile_rank,
@@ -29,16 +29,16 @@ WITH stats_summary AS (
         ON e_d_b.facility_name = f_e_d_m_a.facility_name
         AND e_d_b.month = f_e_d_m_a.month
         AND e_d_b.week_number_monthly = f_e_d_m_a.week_number_monthly
-        AND e_d_b.event_type = f_e_d_m_a.event_type
+        AND e_d_b.date_flag = f_e_d_m_a.date_flag
         AND e_d_b.decile_rank = f_e_d_m_a.decile_rank
     LEFT JOIN stats_summary AS s_s
         ON e_d_b.facility_name = s_s.facility_name
-    WHERE e_d_b.event_type IN ('正月', '年末', 'GW', 'お盆', 'ブラックフライデー')
+    WHERE e_d_b.date_flag IN ('正月', '年末', 'GW', 'お盆', 'ブラックフライデー')
     GROUP BY
         e_d_b.facility_name,
         e_d_b.po_level,
         e_d_b.branch_office,
-        e_d_b.event_type
+        e_d_b.date_flag
 ), challenge_standard_summary AS (
     SELECT
         *,

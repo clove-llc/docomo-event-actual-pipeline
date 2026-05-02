@@ -19,6 +19,6 @@ DATE_MASTER_SCHEMA = [
         "weekday_holiday_with_holiday", "STRING", description="平日/休日（祝日加味）"
     ),
     bigquery.SchemaField("is_offday", "BOOLEAN", description="休日フラグ"),
-    bigquery.SchemaField("date_type", "STRING", description="日付種別"),
-    bigquery.SchemaField("event_type", "STRING", description="イベント種別"),
+    bigquery.SchemaField("date_type", "STRING", description="日付属性"),
+    bigquery.SchemaField("date_flag", "STRING", description="日付種別"),
 ]

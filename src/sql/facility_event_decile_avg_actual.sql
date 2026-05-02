@@ -11,7 +11,7 @@ SELECT
             f_d_a.date
     ) AS month,
     f_d_a.week_number_monthly,
-    f_d_a.event_type,
+    f_d_a.date_flag,
     f_e_d_m.decile_rank,
     ROUND(AVG(f_d_a.actual)) AS avg_actual
 FROM
@@ -23,7 +23,7 @@ FROM
             f_d_a.date
     ) = f_e_d_m.month
     AND f_d_a.week_number_monthly = f_e_d_m.week_number_monthly
-    AND f_d_a.event_type = f_e_d_m.event_type
+    AND f_d_a.date_flag = f_e_d_m.date_flag
 GROUP BY
     f_d_a.facility_name,
     f_d_a.po_level,
@@ -31,5 +31,5 @@ GROUP BY
     f_d_a.branch_office,
     month,
     f_d_a.week_number_monthly,
-    f_d_a.event_type,
+    f_d_a.date_flag,
     f_e_d_m.decile_rank
