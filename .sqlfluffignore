@@ -1,0 +1,4 @@
+docomo_event/dbt_packages/
+docomo_event/dbt_modules/
+docomo_event/target/
+docomo_event/macros/

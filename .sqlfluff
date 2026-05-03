@@ -1,5 +1,13 @@
 [sqlfluff]
 dialect = bigquery
+templater = dbt
+exclude_rules = layout.long_lines
+
+[sqlfluff:templater:dbt]
+project_dir = ./docomo_event
+profiles_dir = ~/.dbt
+profile = docomo_event
+target = dev
 
 [sqlfluff:indentation]
 tab_space_size = 2

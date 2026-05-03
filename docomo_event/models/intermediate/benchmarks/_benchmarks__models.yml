@@ -1,0 +1,97 @@
+version: 2
+
+models:
+  - name: int_facility_event_decile_avg_actual
+    description: "施設・月・月内週番号・日付フラグ・デシル区分ごとの平均実績中間モデル"
+    columns:
+      - name: facility_code
+        description: "施設コード"
+
+      - name: facility_name
+        description: "施設名"
+
+      - name: po_level
+        description: "POレベル"
+
+      - name: regional_office
+        description: "支社"
+
+      - name: branch_office
+        description: "支店"
+
+      - name: month
+        description: "月番号"
+
+      - name: week_number_monthly
+        description: "月内週番号"
+
+      - name: date_flag
+        description: "日付フラグ"
+
+      - name: decile_rank
+        description: "デシル区分"
+
+      - name: avg_actual
+        description: "平均実績"
+  - name: int_event_decile_benchmark
+    description: "月・月内週番号・日付フラグ・デシル区分ごとの実績分位点を施設別に付与した中間モデル"
+    columns:
+      - name: facility_code
+        description: "施設コード"
+
+      - name: facility_name
+        description: "施設名"
+
+      - name: po_level
+        description: "POレベル"
+
+      - name: regional_office
+        description: "支社"
+
+      - name: branch_office
+        description: "支店"
+
+      - name: month
+        description: "月番号"
+
+      - name: week_number_monthly
+        description: "月内週番号"
+
+      - name: date_flag
+        description: "日付フラグ"
+
+      - name: decile_rank
+        description: "デシル区分"
+
+      - name: p10
+        description: "実績下位10%の実績値"
+
+      - name: p20
+        description: "実績下位20%の実績値"
+
+      - name: p25
+        description: "実績下位25%の実績値"
+
+      - name: p30
+        description: "実績下位30%の実績値"
+
+      - name: p40
+        description: "実績下位40%の実績値"
+
+      - name: p50
+        description: "デシル区分の中央値"
+
+      - name: p60
+        description: "実績上位40%の実績値"
+
+      - name: p70
+        description: "実績上位30%の実績値"
+
+      - name: p75
+        description: "実績上位25%の実績値"
+
+      - name: p90
+        description: "実績上位10%の実績値"
+
+      - name: max_performance
+        description: "デシル区分の最大実績値"
