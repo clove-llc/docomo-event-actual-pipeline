@@ -28,13 +28,13 @@ base AS (
 )
 
 SELECT
+  b.facility_name,
   b.po_level,
   b.regional_office,
   b.branch_office,
   b.date,
   b.week_number_monthly,
   b.date_flag,
-  b.facility_name,
   EXTRACT(MONTH FROM b.date) AS month,
   COALESCE(f_e_p_s.standard_target, f_e_p_s_m.avg_standard_target) AS standard_target,
   COALESCE(f_e_p_s.challenge_target, f_e_p_s_m.avg_challenge_target) AS challenge_target,

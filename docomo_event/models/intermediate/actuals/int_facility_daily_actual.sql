@@ -2,6 +2,7 @@
 -- depends_on: {{ ref('stg_date_master_2025_2026') }}
 -- depends_on: {{ ref('stg_venue_performance') }}
 SELECT DISTINCT
+  f_m.facility_code,
   f_m.facility_name,
   f_m.po_level,
   f_m.regional_office,

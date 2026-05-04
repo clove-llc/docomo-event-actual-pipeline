@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: int_facility_monthly_dateflag_deviation_zscore
+    description: "施設・月・日付フラグごとのZスコアの平均を算出した中間モデル"
+    columns:
+      - name: facility_code
+        description: "施設コード"
+
+      - name: facility_name
+        description: "施設名"
+
+      - name: month
+        description: "月番号"
+
+      - name: date_flag
+        description: "日付種別"
+
+      - name: avg_z_score
+        description: "Zスコアの平均"
+
+  - name: int_facility_monthly_weekday_dateflag_deviation_zscore
+    description: "施設・月・曜日・日付フラグごとのZスコアの平均を算出した中間モデル"
+    columns:
+      - name: facility_code
+        description: "施設コード"
+
+      - name: facility_name
+        description: "施設名"
+
+      - name: month
+        description: "月番号"
+
+      - name: weekday_monthly
+        description: "曜日"
+
+      - name: date_flag
+        description: "日付種別"
+
+      - name: avg_z_score
+        description: "Zスコアの平均"
