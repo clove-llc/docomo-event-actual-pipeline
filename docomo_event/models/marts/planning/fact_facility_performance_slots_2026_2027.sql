@@ -1,33 +1,28 @@
--- depends_on: {{ ref("int_facility_event_planning_snapshot") }}
--- depends_on: {{ ref("stg_facility_master") }}
--- depends_on: {{ ref("stg_date_master_2026_2027") }}
--- depends_on: {{ ref("int_facility_monthly_weekday_dateflag_deviation_zscore") }}
--- depends_on: {{ ref("int_facility_monthly_dateflag_deviation_zscore") }}
-
-WITH facility_event_planning_snapshot_monthly AS (
+WITH base AS (
   SELECT
-    f_e_p_s.month,
-    f_e_p_s.date_flag,
-    TRIM(f_e_p_s.facility_name) AS facility_name,
-    ROUND(AVG(f_e_p_s.standard_target)) AS avg_standard_target,
-    ROUND(AVG(f_e_p_s.challenge_target)) AS avg_challenge_target,
-    ROUND(AVG(f_e_p_s.p50)) AS avg_p50
-  FROM {{ ref("int_facility_event_planning_snapshot") }} AS f_e_p_s
-  GROUP BY
-    f_e_p_s.facility_name,
-    f_e_p_s.month,
-    f_e_p_s.date_flag
-),
-
-base AS (
-  SELECT
-    s_f_m.*,
-    s_d_m.*
+    p.benchmark_period_key,
+    p.benchmark_period_name,
+    p.period_start_date,
+    p.period_end_date,
+    s_f_m.facility_code,
+    s_f_m.facility_name,
+    s_f_m.po_level,
+    s_f_m.regional_office,
+    s_f_m.branch_office,
+    s_d_m.date,
+    s_d_m.week_number_monthly,
+    s_d_m.date_flag
   FROM {{ ref("stg_facility_master") }} AS s_f_m
   CROSS JOIN {{ ref("stg_date_master_2026_2027") }} AS s_d_m
+  CROSS JOIN {{ ref("int_benchmark_periods") }} AS p
 )
 
 SELECT
+  b.benchmark_period_key,
+  b.benchmark_period_name,
+  b.period_start_date,
+  b.period_end_date,
+  b.facility_code,
   b.facility_name,
   b.po_level,
   b.regional_office,
@@ -35,62 +30,56 @@ SELECT
   b.date,
   b.week_number_monthly,
   b.date_flag,
+  f_e_p_s.standard_target,
+  f_e_p_s.challenge_target,
+  f_e_p_s.p50,
   EXTRACT(MONTH FROM b.date) AS month,
-  COALESCE(f_e_p_s.standard_target, f_e_p_s_m.avg_standard_target) AS standard_target,
-  COALESCE(f_e_p_s.challenge_target, f_e_p_s_m.avg_challenge_target) AS challenge_target,
-  COALESCE(f_e_p_s.p50, f_e_p_s_m.avg_p50) AS p50,
-  ROUND(COALESCE(f_e_p_s.standard_target, f_e_p_s_m.avg_standard_target) * COALESCE(
-    f_m.avg_z_score,
-    f_m_m.avg_z_score,
-    f_m_3h.avg_z_score,
-    f_m_we.avg_z_score
+  ROUND(f_e_p_s.standard_target * COALESCE(
+    i_f_m_w_d_z.avg_z_score,
+    i_f_m_d_z.avg_z_score,
+    i_f_m_3h.avg_z_score,
+    i_f_m_d_g_z.avg_z_score
   )) AS standard_target_seasonal,
-  ROUND(COALESCE(f_e_p_s.challenge_target, f_e_p_s_m.avg_challenge_target) * COALESCE(
-    f_m.avg_z_score,
-    f_m_m.avg_z_score,
-    f_m_3h.avg_z_score,
-    f_m_we.avg_z_score
+  ROUND(f_e_p_s.challenge_target * COALESCE(
+    i_f_m_w_d_z.avg_z_score,
+    i_f_m_d_z.avg_z_score,
+    i_f_m_3h.avg_z_score,
+    i_f_m_d_g_z.avg_z_score
   )) AS challenge_target_seasonal,
-  ROUND(COALESCE(f_e_p_s.p50, f_e_p_s_m.avg_p50) * COALESCE(
-    f_m.avg_z_score,
-    f_m_m.avg_z_score,
-    f_m_3h.avg_z_score,
-    f_m_we.avg_z_score
+  ROUND(f_e_p_s.p50 * COALESCE(
+    i_f_m_w_d_z.avg_z_score,
+    i_f_m_d_z.avg_z_score,
+    i_f_m_3h.avg_z_score,
+    i_f_m_d_g_z.avg_z_score
   )) AS p50_seasonal
 FROM base AS b
 LEFT JOIN {{ ref("int_facility_event_planning_snapshot") }} AS f_e_p_s
   ON
-    b.facility_name = f_e_p_s.facility_name
-    AND EXTRACT(MONTH FROM b.date) = f_e_p_s.month
-    AND b.week_number_monthly = f_e_p_s.week_number_monthly
+    b.benchmark_period_key = f_e_p_s.benchmark_period_key
+    AND b.facility_code = f_e_p_s.facility_code
     AND b.date_flag = f_e_p_s.date_flag
-LEFT JOIN facility_event_planning_snapshot_monthly AS f_e_p_s_m
-  ON
-    b.facility_name = f_e_p_s_m.facility_name
-    AND EXTRACT(MONTH FROM b.date) = f_e_p_s_m.month
-    AND b.date_flag = f_e_p_s_m.date_flag
 -- 施設 × 月番号 × 週番号 × 日付フラグの粒度で結合
-LEFT JOIN {{ ref("int_facility_monthly_weekday_dateflag_deviation_zscore") }} AS f_m
+LEFT JOIN {{ ref("int_facility_monthly_weekday_dateflag_deviation_zscore") }} AS i_f_m_w_d_z
   ON
-    b.facility_name = f_m.facility_name
-    AND EXTRACT(MONTH FROM b.date) = f_m.month
-    AND b.week_number_monthly = f_m.weekday_monthly
-    AND b.date_flag = f_m.date_flag
+    b.facility_code = i_f_m_w_d_z.facility_code
+    AND EXTRACT(MONTH FROM b.date) = i_f_m_w_d_z.month
+    AND b.week_number_monthly = i_f_m_w_d_z.weekday_monthly
+    AND b.date_flag = i_f_m_w_d_z.date_flag
 -- 2026年と2024年では週番号が異なるかもしれないので、施設 × 月番号 × 日付フラグの粒度で結合
-LEFT JOIN {{ ref("int_facility_monthly_dateflag_deviation_zscore") }} AS f_m_m
+LEFT JOIN {{ ref("int_facility_monthly_dateflag_deviation_zscore") }} AS i_f_m_d_z
   ON
-    b.facility_name = f_m_m.facility_name
-    AND EXTRACT(MONTH FROM b.date) = f_m_m.month
-    AND b.date_flag = f_m_m.date_flag
+    b.facility_code = i_f_m_d_z.facility_code
+    AND EXTRACT(MONTH FROM b.date) = i_f_m_d_z.month
+    AND b.date_flag = i_f_m_d_z.date_flag
 -- 施設 × 月 × 三連休
-LEFT JOIN {{ ref("int_facility_monthly_dateflag_deviation_zscore") }} AS f_m_3h
+LEFT JOIN {{ ref("int_facility_monthly_dateflag_deviation_zscore") }} AS i_f_m_3h
   ON
-    b.facility_name = f_m_3h.facility_name
-    AND EXTRACT(MONTH FROM b.date) = f_m_3h.month
-    AND f_m_3h.date_flag = '三連休'
+    b.facility_code = i_f_m_3h.facility_code
+    AND EXTRACT(MONTH FROM b.date) = i_f_m_3h.month
+    AND i_f_m_3h.date_flag = '三連休'
 -- 施設 × 月 × 通常土日
-LEFT JOIN {{ ref("int_facility_monthly_dateflag_deviation_zscore") }} AS f_m_we
+LEFT JOIN {{ ref("int_facility_monthly_dateflag_deviation_zscore") }} AS i_f_m_d_g_z
   ON
-    b.facility_name = f_m_we.facility_name
-    AND EXTRACT(MONTH FROM b.date) = f_m_we.month
-    AND f_m_we.date_flag = '通常土日'
+    b.facility_code = i_f_m_d_g_z.facility_code
+    AND EXTRACT(MONTH FROM b.date) = i_f_m_d_g_z.month
+    AND i_f_m_d_g_z.date_flag = '通常土日'

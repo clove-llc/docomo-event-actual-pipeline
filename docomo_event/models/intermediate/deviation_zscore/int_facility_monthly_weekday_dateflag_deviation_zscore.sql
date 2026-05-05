@@ -3,7 +3,7 @@
 
 SELECT
   f.facility_code,
-  f.facility_name, # 表記ゆれしているので、マスタ側の表記に合わせる
+  f.facility_name,
   f_d_z.month,
   f_d_z.weekday_monthly,
   f_d_z.date_flag,

@@ -10,21 +10,6 @@ models:
       - name: facility_name
         description: "施設名"
 
-      - name: po_level
-        description: "POレベル"
-
-      - name: regional_office
-        description: "支社"
-
-      - name: branch_office
-        description: "支店"
-
-      - name: month
-        description: "月番号"
-
-      - name: week_number_monthly
-        description: "月内週番号"
-
       - name: date_flag
         description: "日付フラグ"
 

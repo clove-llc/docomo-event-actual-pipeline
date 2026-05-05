@@ -4,6 +4,18 @@ models:
   - name: int_facility_event_planning_snapshot
     description: "施設・月・月内週番号・日付フラグごとの標準目標値とチャレンジ目標値を算出する中間モデル"
     columns:
+      - name: benchmark_period_key
+        description: "ベンチマーク期間キー"
+
+      - name: benchmark_period_name
+        description: "ベンチマーク期間名"
+
+      - name: period_start_date
+        description: "期間開始日"
+
+      - name: period_end_date
+        description: "期間終了日"
+
       - name: facility_code
         description: "施設コード"
 
@@ -19,23 +31,14 @@ models:
       - name: branch_office
         description: "支店"
 
-      - name: month
-        description: "月番号"
-
-      - name: week_number_monthly
-        description: "月内週番号"
-
       - name: date_flag
         description: "日付フラグ"
 
-      - name: daily_actual
-        description: "施設・月・月内週番号・日付フラグ・デシル区分ごとの平均実績"
-
-      - name: latest_actual
-        description: "施設ごとの直近実績"
-
       - name: decile_rank
         description: "デシル区分"
+
+      - name: avg_actual
+        description: "施設・月・月内週番号・日付フラグ・デシル区分ごとの平均実績"
 
       - name: p25
         description: "実績下位25%の実績値"

@@ -1,9 +1,34 @@
 version: 2
 
 models:
+  - name: int_benchmark_periods
+    description: "ベンチマーク期間を定義する中間モデル"
+    columns:
+      - name: benchmark_period_key
+        description: "ベンチマーク期間キー"
+      - name: benchmark_period_name
+        description: "ベンチマーク期間名"
+      - name: period_start_date
+        description: "期間開始日"
+      - name: period_end_date
+        description: "期間終了日"
+      - name: period_month_count
+        description: "期間の月数"
   - name: int_facility_event_decile_avg_actual
     description: "施設・月・月内週番号・日付フラグ・デシル区分ごとの平均実績中間モデル"
     columns:
+      - name: benchmark_period_key
+        description: "ベンチマーク期間キー"
+
+      - name: benchmark_period_name
+        description: "ベンチマーク期間名"
+
+      - name: period_start_date
+        description: "期間開始日"
+
+      - name: period_end_date
+        description: "期間終了日"
+
       - name: facility_code
         description: "施設コード"
 
@@ -18,12 +43,6 @@ models:
 
       - name: branch_office
         description: "支店"
-
-      - name: month
-        description: "月番号"
-
-      - name: week_number_monthly
-        description: "月内週番号"
 
       - name: date_flag
         description: "日付フラグ"
@@ -31,31 +50,28 @@ models:
       - name: decile_rank
         description: "デシル区分"
 
+      - name: actual_days
+        description: "実績日数"
+
+      - name: total_actual
+        description: "実績合計"
+
       - name: avg_actual
         description: "平均実績"
   - name: int_event_decile_benchmark
     description: "月・月内週番号・日付フラグ・デシル区分ごとの実績分位点を施設別に付与した中間モデル"
     columns:
-      - name: facility_code
-        description: "施設コード"
+      - name: benchmark_period_key
+        description: "ベンチマーク期間キー"
 
-      - name: facility_name
-        description: "施設名"
+      - name: benchmark_period_name
+        description: "ベンチマーク期間名"
 
-      - name: po_level
-        description: "POレベル"
+      - name: period_start_date
+        description: "期間開始日"
 
-      - name: regional_office
-        description: "支社"
-
-      - name: branch_office
-        description: "支店"
-
-      - name: month
-        description: "月番号"
-
-      - name: week_number_monthly
-        description: "月内週番号"
+      - name: period_end_date
+        description: "期間終了日"
 
       - name: date_flag
         description: "日付フラグ"

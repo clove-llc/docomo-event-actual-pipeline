@@ -4,6 +4,18 @@ models:
   - name: fact_facility_performance_slots_2026_2027
     description: "2026年と2027年の日別の目標値を格納するファクトテーブル"
     columns:
+      - name: benchmark_period_key
+        description: "ベンチマーク期間キー"
+
+      - name: benchmark_period_name
+        description: "ベンチマーク期間名"
+
+      - name: period_start_date
+        description: "期間開始日"
+
+      - name: period_end_date
+        description: "期間終了日"
+
       - name: facility_code
         description: "施設コード"
 
