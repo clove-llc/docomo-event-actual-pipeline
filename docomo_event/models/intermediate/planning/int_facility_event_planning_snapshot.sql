@@ -58,7 +58,8 @@ base AS (
         WHEN i_f_e_d_a_a.avg_actual < i_e_d_b.p60 THEN i_e_d_b.p60
         WHEN i_f_e_d_a_a.avg_actual < i_e_d_b.p70 THEN i_e_d_b.p70
         WHEN i_f_e_d_a_a.avg_actual < i_e_d_b.p75 THEN i_e_d_b.p75
-        ELSE i_e_d_b.p90
+        WHEN i_f_e_d_a_a.avg_actual < i_e_d_b.p90 THEN i_e_d_b.p90
+        ELSE i_e_d_b.max_performance
       END,
       1 -- 0の場合は1にする（下限値を1に設定）
     ) AS standard_target
