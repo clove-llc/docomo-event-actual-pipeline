@@ -1,6 +1,63 @@
 version: 2
 
 models:
+  - name: fact_facility_performance_slots_2025_2026
+    description: "2025年と2026年の日別の目標値を施設*月*週番号*日付フラグ粒度で格納するファクトテーブル"
+    columns:
+      - name: benchmark_period_key
+        description: "ベンチマーク期間キー"
+
+      - name: benchmark_period_name
+        description: "ベンチマーク期間名"
+
+      - name: period_start_date
+        description: "期間開始日"
+
+      - name: period_end_date
+        description: "期間終了日"
+
+      - name: facility_code
+        description: "施設コード"
+
+      - name: facility_name
+        description: "施設名"
+
+      - name: po_level
+        description: "POレベル"
+
+      - name: regional_office
+        description: "支社"
+
+      - name: branch_office
+        description: "支店"
+
+      - name: month
+        description: "月番号"
+
+      - name: week_number_monthly
+        description: "月内週番号"
+
+      - name: date_flag
+        description: "日付フラグ"
+
+      - name: standard_target
+        description: "標準目標値"
+
+      - name: challenge_target
+        description: "チャレンジ目標値"
+
+      - name: p50
+        description: "実績の中央値"
+
+      - name: standard_target_seasonal
+        description: "季節調整後の標準目標値"
+
+      - name: challenge_target_seasonal
+        description: "季節調整後のチャレンジ目標値"
+
+      - name: p50_seasonal
+        description: "季節調整後の実績の中央値"
+
   - name: fact_facility_performance_slots_2026_2027
     description: "2026年と2027年の日別の目標値を格納するファクトテーブル"
     columns:
