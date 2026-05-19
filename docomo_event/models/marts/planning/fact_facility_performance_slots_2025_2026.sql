@@ -156,6 +156,7 @@ LEFT JOIN planning_snapshot_all_period AS f_e_p_s_all_period
   ON
     b_m_w_d.facility_code = f_e_p_s_all_period.facility_code
     AND b_m_w_d.date_flag = f_e_p_s_all_period.date_flag
+-- 施設 × 月番号 × 週番号 × 日付フラグの粒度で結合
 LEFT JOIN {{ ref("int_facility_monthly_weekday_dateflag_deviation_zscore") }} AS i_f_m_w_d_z
   ON
     b_m_w_d.facility_code = i_f_m_w_d_z.facility_code

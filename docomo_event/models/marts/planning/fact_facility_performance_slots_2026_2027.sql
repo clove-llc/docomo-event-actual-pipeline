@@ -43,31 +43,40 @@ SELECT
   b.month,
   b.week_number_monthly,
   b.date_flag,
-  COALESCE(
-    f_e_p_s.standard_target,
-    f_e_p_s_all_period.all_period_standard_target
-  ) AS standard_target,
-  COALESCE(
-    f_e_p_s.challenge_target,
-    f_e_p_s_all_period.all_period_challenge_target
-  ) AS challenge_target,
-  COALESCE(
-    f_e_p_s.p50,
-    f_e_p_s_all_period.all_period_p50
-  ) AS p50,
-  ROUND(COALESCE(f_e_p_s.standard_target, f_e_p_s_all_period.all_period_standard_target) * COALESCE(
+  CASE
+    WHEN b.date_flag = 'GW' OR b.date_flag = 'お盆' THEN f_e_p_s_all_period.all_period_standard_target
+    ELSE f_e_p_s.standard_target
+  END AS standard_target,
+  CASE
+    WHEN b.date_flag = 'GW' OR b.date_flag = 'お盆' THEN f_e_p_s_all_period.all_period_challenge_target
+    ELSE f_e_p_s.challenge_target
+  END AS challenge_target,
+  CASE
+    WHEN b.date_flag = 'GW' OR b.date_flag = 'お盆' THEN f_e_p_s_all_period.all_period_p50
+    ELSE f_e_p_s.p50
+  END AS p50,
+  ROUND(CASE
+    WHEN b.date_flag = 'GW' OR b.date_flag = 'お盆' THEN f_e_p_s_all_period.all_period_standard_target
+    ELSE f_e_p_s.standard_target
+  END * COALESCE(
     i_f_m_w_d_z.avg_z_score,
     i_f_m_d_z.avg_z_score,
     i_f_m_3h.avg_z_score,
     i_f_m_d_g_z.avg_z_score
   )) AS standard_target_seasonal,
-  ROUND(COALESCE(f_e_p_s.challenge_target, f_e_p_s_all_period.all_period_challenge_target) * COALESCE(
+  ROUND(CASE
+    WHEN b.date_flag = 'GW' OR b.date_flag = 'お盆' THEN f_e_p_s_all_period.all_period_challenge_target
+    ELSE f_e_p_s.challenge_target
+  END * COALESCE(
     i_f_m_w_d_z.avg_z_score,
     i_f_m_d_z.avg_z_score,
     i_f_m_3h.avg_z_score,
     i_f_m_d_g_z.avg_z_score
   )) AS challenge_target_seasonal,
-  ROUND(COALESCE(f_e_p_s.p50, f_e_p_s_all_period.all_period_p50) * COALESCE(
+  ROUND(CASE
+    WHEN b.date_flag = 'GW' OR b.date_flag = 'お盆' THEN f_e_p_s_all_period.all_period_p50
+    ELSE f_e_p_s.p50
+  END * COALESCE(
     i_f_m_w_d_z.avg_z_score,
     i_f_m_d_z.avg_z_score,
     i_f_m_3h.avg_z_score,
