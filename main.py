@@ -6,8 +6,6 @@ from google.cloud import bigquery
 from google.oauth2.service_account import Credentials
 
 from src.config.config import (
-    DIMENSION_TABLE_SQL_FILES,
-    FACT_TABLE_SQL_FILES,
     get_settings,
 )
 from src.config.logging_config import setup_logging
@@ -29,9 +27,7 @@ from src.transformers.event_actual_transformer import EventActualTransformer
 
 from src.pipeline import (
     run_pipeline,
-    refresh_derived_tables,
 )
-
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -146,13 +142,6 @@ def main() -> None:
             ),
         )
 
-        # ----- ディメンションテーブルに関連するテーブルの更新 -----
-        refresh_derived_tables(
-            derived_sql_files=DIMENSION_TABLE_SQL_FILES,
-            output_repository=bigquery_repository,
-            project_id=project_id,
-        )
-
     facility_master_sheets = google_spreadsheets_repository.fetch_spreadsheets(
         facility_master_sheet_id
     )
@@ -167,13 +156,6 @@ def main() -> None:
         output_repository=bigquery_repository,
         sheet_id=event_actual_sheet_id,
         transformer=EventActualTransformer(facility_name_mapping_df),
-    )
-
-    # ----- ファクトテーブルに関連するテーブルの更新 -----
-    refresh_derived_tables(
-        derived_sql_files=FACT_TABLE_SQL_FILES,
-        output_repository=bigquery_repository,
-        project_id=project_id,
     )
 
 

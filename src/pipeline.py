@@ -5,8 +5,6 @@ from src.repositories.bigquery_repository import (
 )
 from src.repositories.google_spreadsheets_repository import GoogleSpreadSheetsRepository
 from src.transformers.transformer_base import TransformerBase
-from src.utils import load_sql
-
 
 logger = logging.getLogger(__name__)
 
@@ -33,17 +31,3 @@ def run_pipeline(
     )
 
     logger.info("%s 更新処理が完了しました。", name)
-
-
-def refresh_derived_tables(
-    derived_sql_files: list[str], output_repository: BigQueryRepository, project_id: str
-) -> None:
-    logger.info("関連テーブルの更新を開始します。")
-
-    for sql_file in derived_sql_files:
-        logger.info("%sの更新を行います。", sql_file)
-        sql = load_sql(file_name=sql_file, project_id=project_id)
-        output_repository.execute_query(sql)
-        logger.info("%sの更新が完了しました。", sql_file)
-
-    logger.info("関連テーブルの更新を終了します。")

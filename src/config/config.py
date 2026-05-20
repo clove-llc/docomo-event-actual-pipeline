@@ -4,24 +4,6 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
-DIMENSION_TABLE_SQL_FILES = [
-    "facility_event_decile_master.sql",
-    "facility_monthly_weekday_dateflag_deviation_zscore.sql",
-    "facility_monthly_dateflag_deviation_zscore.sql",
-]
-
-FACT_TABLE_SQL_FILES = [
-    "facility_daily_actual.sql",
-    "facility_event_decile_avg_actual.sql",
-    "event_decile_benchmark.sql",
-    "facility_event_planning_snapshot.sql",
-    "facility_special_event_planning_summary.sql",
-    "facility_performance_slots_2026_2027.sql",
-    "facility_event_planning_high_resolution.sql",
-    "facility_special_event_planning_high_resolution.sql",
-    "facility_performance_slots_2026_2027_high_resolution.sql",
-]
-
 
 def is_enabled(env_var_name: str) -> bool:
     val = os.getenv(env_var_name, "false").lower()
