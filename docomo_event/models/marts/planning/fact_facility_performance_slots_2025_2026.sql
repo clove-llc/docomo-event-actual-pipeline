@@ -161,7 +161,7 @@ LEFT JOIN {{ ref("int_facility_monthly_weekday_dateflag_deviation_zscore") }} AS
   ON
     b_m_w_d.facility_code = i_f_m_w_d_z.facility_code
     AND b_m_w_d.month = i_f_m_w_d_z.month
-    AND b_m_w_d.week_number_monthly = i_f_m_w_d_z.weekday_monthly
+    AND b_m_w_d.week_number_monthly = i_f_m_w_d_z.week_number_monthly
     AND b_m_w_d.date_flag = i_f_m_w_d_z.date_flag
 -- 2026年と2024年では週番号が異なるかもしれないので、施設 × 月番号 × 日付フラグの粒度で結合
 LEFT JOIN {{ ref("int_facility_monthly_dateflag_deviation_zscore") }} AS i_f_m_d_z

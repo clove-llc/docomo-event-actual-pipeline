@@ -1,4 +1,3 @@
--- depends_on: {{ ref("int_facility_monthly_weekday_dateflag_deviation_zscore") }}
 SELECT DISTINCT
   f.facility_code,
   f.facility_name,

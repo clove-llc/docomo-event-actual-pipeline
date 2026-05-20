@@ -1,11 +1,11 @@
--- depends_on: {{ ref("stg_facility_foot_traffic_sum_and_decile_by_flag") }}
+-- depends_on: {{ ref("stg_facility_foot_traffic_avg_and_decile_by_flag") }}
 WITH unpivoted AS (
   SELECT
     facility_code,
     facility_name,
     date_flag,
     decile_rank
-  FROM {{ ref("stg_facility_foot_traffic_sum_and_decile_by_flag") }}
+  FROM {{ ref("stg_facility_foot_traffic_avg_and_decile_by_flag") }}
   UNPIVOT (
     decile_rank FOR date_flag IN (
       gw_decile_rank AS 'GW',

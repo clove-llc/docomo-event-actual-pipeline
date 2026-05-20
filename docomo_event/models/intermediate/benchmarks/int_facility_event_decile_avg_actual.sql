@@ -1,7 +1,3 @@
--- depends_on: {{ ref("int_facility_daily_actual") }}
--- depends_on: {{ ref("int_benchmark_periods") }}
--- depends_on: {{ ref("int_facility_event_decile_mapping") }}
-
 WITH joined AS (
   SELECT
     p.benchmark_period_key,

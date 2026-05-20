@@ -10,15 +10,6 @@ models:
           - not_null
           - unique
 
-      - name: check
-        description: "Check"
-
-      - name: retail_data_sheet_name
-        description: "量販店データシートの名称"
-
-      - name: search_keyword_competitor_map
-        description: "検索ワード（他社対抗MAP名）"
-
       - name: facility_name
         description: "表示施設名（全体管理簿）"
         tests:
@@ -27,968 +18,12 @@ models:
       - name: po_level
         description: "POレベル"
 
-      - name: facility_category
-        description: "施設カテゴリ"
-
       - name: regional_office
         description: "支社"
 
       - name: branch_office
         description: "支店"
 
-      - name: facility_address_raw
-        description: "施設住所。不完全のため検索不可"
-
-      - name: inshop_store_name
-        description: "インショップ店舗名"
-
-      - name: satellite
-        description: "サテライト"
-
-      - name: satellite_parent_store
-        description: "サテライト母体店舗"
-
-      - name: satellite_code
-        description: "サテライトコード"
-
-      - name: retail_store_1
-        description: "量販店1"
-
-      - name: retail_store_2
-        description: "量販店2"
-
-      - name: retail_store_3
-        description: "量販店3"
-
-      - name: retail_internal_code_1
-        description: "量販店内部コード1"
-
-      - name: retail_internal_code_2
-        description: "量販店内部コード2"
-
-      - name: retail_internal_code_3
-        description: "量販店内部コード3"
-
-      - name: has_ds_or_satellite
-        description: "DSまたはサテライトあり"
-
-      - name: has_ds_or_satellite_bool
-        description: "DSまたはサテライトありのBOOLEAN化"
-
-      - name: ds_flag
-        description: "DS"
-
-      - name: ds_bool
-        description: "DSのBOOLEAN化"
-
-      - name: st_flag
-        description: "ST"
-
-      - name: st_bool
-        description: "STのBOOLEAN化"
-
-      - name: retail_flag
-        description: "量販"
-
-      - name: retail_bool
-        description: "量販のBOOLEAN化"
-
-      - name: softbank_flag
-        description: "SB"
-
-      - name: softbank_bool
-        description: "SBのBOOLEAN化"
-
-      - name: au_flag
-        description: "au"
-
-      - name: au_bool
-        description: "auのBOOLEAN化"
-
-      - name: rakuten_mobile_flag
-        description: "楽天モバイル"
-
-      - name: rakuten_mobile_bool
-        description: "楽天モバイルのBOOLEAN化"
-
-      - name: facility_group
-        description: "施設グループ"
-
-      - name: notes
-        description: "備考"
-
-      - name: facility_category_2
-        description: "施設カテゴリ2"
-
-      - name: business_floor_area
-        description: "営業面積"
-
-      - name: tenant_count
-        description: "テナント数"
-  - name: stg_facility_statistics_master
-    description: "施設統計マスタのstagingテーブル。施設ごとの商圏人口・世帯・所得・昼間人口・来訪者属性などの統計情報を保持する。"
-    columns:
-      - name: facility_code
-        description: "施設コード"
-        tests:
-          - not_null
-          - unique
-      - name: facility_name
-        description: "表示施設名（全体管理簿）"
-        tests:
-          - not_null
-      - name: 1km_total_population_20t
-        description: "1km|人口総数20T"
-      - name: 1km_population_0_4_years_old_20t
-        description: "1km|人口（0-4歳）20T"
-      - name: 1km_population_5_9_years_old_20t
-        description: "1km|人口（5-9歳）20T"
-      - name: 1km_population_10_14_years_old_20t
-        description: "1km|人口（10-14歳）20T"
-      - name: 1km_population_15_19_years_old_20t
-        description: "1km|人口（15-19歳）20T"
-      - name: 1km_population_20_24_years_old_20t
-        description: "1km|人口（20-24歳）20T"
-      - name: 1km_population_25_29_years_old_20t
-        description: "1km|人口（25-29歳）20T"
-      - name: 1km_population_30_34_years_old_20t
-        description: "1km|人口（30-34歳）20T"
-      - name: 1km_population_35_39_years_old_20t
-        description: "1km|人口（35-39歳）20T"
-      - name: 1km_population_40_44_years_old_20t
-        description: "1km|人口（40-44歳）20T"
-      - name: 1km_population_45_49_years_old_20t
-        description: "1km|人口（45-49歳）20T"
-      - name: 1km_population_50_54_years_old_20t
-        description: "1km|人口（50-54歳）20T"
-      - name: 1km_population_55_59_years_old_20t
-        description: "1km|人口（55-59歳）20T"
-      - name: 1km_population_60_64_years_old_20t
-        description: "1km|人口（60-64歳）20T"
-      - name: 1km_population_65_69_years_old_20t
-        description: "1km|人口（65-69歳）20T"
-      - name: 1km_population_70_74_years_old_20t
-        description: "1km|人口（70-74歳）20T"
-      - name: 1km_population_75_79_years_old_20t
-        description: "1km|人口（75-79歳）20T"
-      - name: 1km_population_under_6_years_old_20t
-        description: "1km|人口（6歳未満）20T※"
-      - name: 1km_population_under_15_years_old_20t
-        description: "1km|人口（15歳未満）20T"
-      - name: 1km_population_over_65_years_old_20t
-        description: "1km|人口（65歳以上）20T"
-      - name: 1km_population_under_18_years_old_20t
-        description: "1km|人口（18歳未満）20T※"
-      - name: 1km_number_of_general_households_20t
-        description: "1km|一般世帯数20T"
-      - name: 1km_1_person_household_20t
-        description: "1km|1人世帯20T"
-      - name: 1km_2_person_household_20t
-        description: "1km|2人世帯20T"
-      - name: 1km_3_person_household_20t
-        description: "1km|3人世帯20T"
-      - name: 1km_4_person_household_20t
-        description: "1km|4人世帯20T"
-      - name: 1km_5_person_household_20t
-        description: "1km|5人世帯20T"
-      - name: 1km_6_person_household_20t
-        description: "1km|6人世帯20T"
-      - name: 1km_households_of_7_or_more_people_20t
-        description: "1km|7人以上世帯20T"
-      - name: 1km_households_of_3_or_more_people_20t
-        description: "1km|3人以上世帯20T"
-      - name: 1km_number_of_general_households_nuclear_families_20t
-        description: "1km|一般世帯数（核家族世帯）20T"
-      - name: 1km_number_of_ordinary_households_households_with_only_a_married_couple_20t
-        description: "1km|一般世帯数（夫婦のみの世帯）20T"
-      - name: 1km_number_of_ordinary_households_households_consisting_of_a_couple_and_children_20t
-        description: "1km|一般世帯数（夫婦と子供から成る世帯）20T"
-      - name: 1km_number_of_ordinary_households_single_households_20t
-        description: "1km|一般世帯数（単独世帯）20T"
-      - name: 1km_number_of_ordinary_households_households_other_than_nuclear_families_20t
-        description: "1km|一般世帯数（核家族以外の世帯）20T"
-      - name: 1km_number_of_general_households_households_consisting_of_a_husband_aged_65_or_over_and_a_wife_aged_60_or_over_20t
-        description: "1km|一般世帯数（夫65歳以上，妻60歳以上の夫婦のみの世帯）20T"
-      - name: 1km_number_of_general_households_single_households_aged_65_or_over_20t
-        description: "1km|一般世帯数（65歳以上の単独世帯）20T"
-      - name: 1km_population_students_20t
-        description: "1km|人口（通学者）20T"
-      - name: 1km_estimated_households_annual_income_less_than_1_million_yen_9_classes_23t
-        description: "1km|推計世帯（年収100万未満_9階級）23T"
-      - name: 1km_estimated_households_annual_income_1_2_million_yen_9_classes_23t
-        description: "1km|推計世帯（年収100-200万未満_9階級）23T"
-      - name: 1km_estimated_households_annual_income_2_3_million_yen_9_classes_23t
-        description: "1km|推計世帯（年収200-300万未満_9階級）23T"
-      - name: 1km_estimated_households_annual_income_3_4_million_yen_9_classes_23t
-        description: "1km|推計世帯（年収300-400万未満_9階級）23T"
-      - name: 1km_estimated_households_annual_income_4_5_million_yen_9_classes_23t
-        description: "1km|推計世帯（年収400-500万未満_9階級）23T"
-      - name: 1km_estimated_households_annual_income_5_7_million_yen_9_classes_23t
-        description: "1km|推計世帯（年収500-700万未満_9階級）23T"
-      - name: 1km_estimated_households_annual_income_7_10_million_yen_9_classes_23t
-        description: "1km|推計世帯（年収700-1000万未満_9階級）23T"
-      - name: 1km_estimated_households_annual_income_10_15_million_yen_9_classes_23t
-        description: "1km|推計世帯（年収1000-1500万未満_9階級）23T"
-      - name: 1km_estimated_households_annual_income_of_15_million_yen_or_more_9_classes_23t
-        description: "1km|推計世帯（年収1500万以上_9階級）23T"
-      - name: 1km_communication_mobile_phone_communication_fee_23t20hp
-        description: "1km|通信_携帯電話通信料23T20HP"
-      - name: 1km_education_tuition_etc_total_23t20hp
-        description: "1km|教育_授業料等合計23T20HP"
-      - name: 2km_total_population_20t
-        description: "2km|人口総数20T"
-      - name: 2km_population_0_4_years_old_20t
-        description: "2km|人口（0-4歳）20T"
-      - name: 2km_population_5_9_years_old_20t
-        description: "2km|人口（5-9歳）20T"
-      - name: 2km_population_10_14_years_old_20t
-        description: "2km|人口（10-14歳）20T"
-      - name: 2km_population_15_19_years_old_20t
-        description: "2km|人口（15-19歳）20T"
-      - name: 2km_population_20_24_years_old_20t
-        description: "2km|人口（20-24歳）20T"
-      - name: 2km_population_25_29_years_old_20t
-        description: "2km|人口（25-29歳）20T"
-      - name: 2km_population_30_34_years_old_20t
-        description: "2km|人口（30-34歳）20T"
-      - name: 2km_population_35_39_years_old_20t
-        description: "2km|人口（35-39歳）20T"
-      - name: 2km_population_40_44_years_old_20t
-        description: "2km|人口（40-44歳）20T"
-      - name: 2km_population_45_49_years_old_20t
-        description: "2km|人口（45-49歳）20T"
-      - name: 2km_population_50_54_years_old_20t
-        description: "2km|人口（50-54歳）20T"
-      - name: 2km_population_55_59_years_old_20t
-        description: "2km|人口（55-59歳）20T"
-      - name: 2km_population_60_64_years_old_20t
-        description: "2km|人口（60-64歳）20T"
-      - name: 2km_population_65_69_years_old_20t
-        description: "2km|人口（65-69歳）20T"
-      - name: 2km_population_70_74_years_old_20t
-        description: "2km|人口（70-74歳）20T"
-      - name: 2km_population_75_79_years_old_20t
-        description: "2km|人口（75-79歳）20T"
-      - name: 2km_population_under_6_years_old_20t
-        description: "2km|人口（6歳未満）20T※"
-      - name: 2km_population_under_15_years_old_20t
-        description: "2km|人口（15歳未満）20T"
-      - name: 2km_population_over_65_20t
-        description: "2km|人口（65歳以上）20T"
-      - name: 2km_population_under_18_years_old_20t
-        description: "2km|人口（18歳未満）20T※"
-      - name: 2km_20t_general_households
-        description: "2km|一般世帯数20T"
-      - name: 2km_1_person_household_20t
-        description: "2km|1人世帯20T"
-      - name: 2km_2_person_household_20t
-        description: "2km|2人世帯20T"
-      - name: 2km_3_person_household_20t
-        description: "2km|3人世帯20T"
-      - name: 2km_4_person_household_20t
-        description: "2km|4人世帯20T"
-      - name: 2km_5_person_household_20t
-        description: "2km|5人世帯20T"
-      - name: 2km_6_person_household_20t
-        description: "2km|6人世帯20T"
-      - name: 2km_households_of_7_or_more_people_20t
-        description: "2km|7人以上世帯20T"
-      - name: 2km_households_of_3_or_more_people_20t
-        description: "2km|3人以上世帯20T"
-      - name: 2km_number_of_general_households_nuclear_families_20t
-        description: "2km|一般世帯数（核家族世帯）20T"
-      - name: 2km_number_of_ordinary_households_households_with_only_a_married_couple_20t
-        description: "2km|一般世帯数（夫婦のみの世帯）20T"
-      - name: 2km_number_of_ordinary_households_households_consisting_of_a_couple_and_children_20t
-        description: "2km|一般世帯数（夫婦と子供から成る世帯）20T"
-      - name: 2km_number_of_ordinary_households_single_households_20t
-        description: "2km|一般世帯数（単独世帯）20T"
-      - name: 2km_number_of_ordinary_households_households_other_than_nuclear_families_20t
-        description: "2km|一般世帯数（核家族以外の世帯）20T"
-      - name: 2km_number_of_general_households_households_consisting_of_a_husband_aged_65_or_older_and_a_wife_aged_60_or_older_20t
-        description: "2km|一般世帯数（夫65歳以上，妻60歳以上の夫婦のみの世帯）20T"
-      - name: 2km_number_of_general_households_single_households_aged_65_or_over_20t
-        description: "2km|一般世帯数（65歳以上の単独世帯）20T"
-      - name: 2km_population_students_20t
-        description: "2km|人口（通学者）20T"
-      - name: 2km_estimated_households_annual_income_less_than_1_million_yen_9_classes_23t
-        description: "2km|推計世帯（年収100万未満_9階級）23T"
-      - name: 2km_estimated_households_annual_income_1_2_million_yen_9_classes_23t
-        description: "2km|推計世帯（年収100-200万未満_9階級）23T"
-      - name: 2km_estimated_households_annual_income_2_3_million_yen_9_classes_23t
-        description: "2km|推計世帯（年収200-300万未満_9階級）23T"
-      - name: 2km_estimated_households_annual_income_3_4_million_yen_9_classes_23t
-        description: "2km|推計世帯（年収300-400万未満_9階級）23T"
-      - name: 2km_estimated_households_annual_income_4_5_million_yen_9_classes_23t
-        description: "2km|推計世帯（年収400-500万未満_9階級）23T"
-      - name: 2km_estimated_households_annual_income_5_7_million_yen_9_classes_23t
-        description: "2km|推計世帯（年収500-700万未満_9階級）23T"
-      - name: 2km_estimated_households_annual_income_7_10_million_yen_9_classes_23t
-        description: "2km|推計世帯（年収700-1000万未満_9階級）23T"
-      - name: 2km_estimated_households_annual_income_10_15_million_yen_9_classes_23t
-        description: "2km|推計世帯（年収1000-1500万未満_9階級）23T"
-      - name: 2km_estimated_households_annual_income_over_15_million_yen_9_classes_23t
-        description: "2km|推計世帯（年収1500万以上_9階級）23T"
-      - name: 2km_communication_mobile_phone_communication_fee_23t20hp
-        description: "2km|通信_携帯電話通信料23T20HP"
-      - name: 2km_education_tuition_etc_total_23t20hp
-        description: "2km|教育_授業料等合計23T20HP"
-      - name: 3km_total_population_20t
-        description: "3km|人口総数20T"
-      - name: 3km_population_0_4_years_old_20t
-        description: "3km|人口（0-4歳）20T"
-      - name: 3km_population_5_9_years_old_20t
-        description: "3km|人口（5-9歳）20T"
-      - name: 3km_population_10_14_years_old_20t
-        description: "3km|人口（10-14歳）20T"
-      - name: 3km_population_15_19_years_20t
-        description: "3km|人口（15-19歳）20T"
-      - name: 3km_population_20_24_years_old_20t
-        description: "3km|人口（20-24歳）20T"
-      - name: 3km_population_25_29_years_old_20t
-        description: "3km|人口（25-29歳）20T"
-      - name: 3km_population_30_34_years_old_20t
-        description: "3km|人口（30-34歳）20T"
-      - name: 3km_population_35_39_years_old_20t
-        description: "3km|人口（35-39歳）20T"
-      - name: 3km_population_40_44_years_old_20t
-        description: "3km|人口（40-44歳）20T"
-      - name: 3km_population_45_49_years_old_20t
-        description: "3km|人口（45-49歳）20T"
-      - name: 3km_population_50_54_years_old_20t
-        description: "3km|人口（50-54歳）20T"
-      - name: 3km_population_55_59_years_old_20t
-        description: "3km|人口（55-59歳）20T"
-      - name: 3km_population_60_64_years_old_20t
-        description: "3km|人口（60-64歳）20T"
-      - name: 3km_population_65_69_years_old_20t
-        description: "3km|人口（65-69歳）20T"
-      - name: 3km_population_70_74_years_old_20t
-        description: "3km|人口（70-74歳）20T"
-      - name: 3km_population_75_79_years_old_20t
-        description: "3km|人口（75-79歳）20T"
-      - name: 3km_population_under_6_years_old_20t
-        description: "3km|人口（6歳未満）20T※"
-      - name: 3km_population_under_15_years_old_20t
-        description: "3km|人口（15歳未満）20T"
-      - name: 3km_population_65_20t
-        description: "3km|人口（65歳以上）20T"
-      - name: 3km_population_under_18_years_old_20t
-        description: "3km|人口（18歳未満）20T※"
-      - name: 3km_20t_general_households
-        description: "3km|一般世帯数20T"
-      - name: 3km_1_person_household_20t
-        description: "3km|1人世帯20T"
-      - name: 3km_2_person_household_20t
-        description: "3km|2人世帯20T"
-      - name: 3km_3_person_household_20t
-        description: "3km|3人世帯20T"
-      - name: 3km_4_person_household_20t
-        description: "3km|4人世帯20T"
-      - name: 3km_5_person_household_20t
-        description: "3km|5人世帯20T"
-      - name: 3km_6_person_household_20t
-        description: "3km|6人世帯20T"
-      - name: 3km_households_of_7_or_more_people_20t
-        description: "3km|7人以上世帯20T"
-      - name: 3km_households_with_3_or_more_people_20t
-        description: "3km|3人以上世帯20T"
-      - name: 3km_number_of_general_households_nuclear_families_20t
-        description: "3km|一般世帯数（核家族世帯）20T"
-      - name: 3km_number_of_ordinary_households_households_with_only_a_married_couple_20t
-        description: "3km|一般世帯数（夫婦のみの世帯）20T"
-      - name: 3km_number_of_ordinary_households_households_consisting_of_a_couple_and_children_20t
-        description: "3km|一般世帯数（夫婦と子供から成る世帯）20T"
-      - name: 3km_number_of_ordinary_households_single_households_20t
-        description: "3km|一般世帯数（単独世帯）20T"
-      - name: 3km_number_of_ordinary_households_households_other_than_nuclear_families_20t
-        description: "3km|一般世帯数（核家族以外の世帯）20T"
-      - name: 3km_number_of_general_households_households_consisting_of_a_husband_aged_65_or_over_and_a_wife_aged_60_or_over_20t
-        description: "3km|一般世帯数（夫65歳以上，妻60歳以上の夫婦のみの世帯）20T"
-      - name: 3km_number_of_general_households_single_households_aged_65_or_over_20t
-        description: "3km|一般世帯数（65歳以上の単独世帯）20T"
-      - name: 3km_population_commuting_to_school_20t
-        description: "3km|人口（通学者）20T"
-      - name: 3km_estimated_households_annual_income_less_than_1_million_yen_9_classes_23t
-        description: "3km|推計世帯（年収100万未満_9階級）23T"
-      - name: 3km_estimated_households_annual_income_1_2_million_yen_9_classes_23t
-        description: "3km|推計世帯（年収100-200万未満_9階級）23T"
-      - name: 3km_estimated_households_annual_income_2_3_million_yen_9_classes_23t
-        description: "3km|推計世帯（年収200-300万未満_9階級）23T"
-      - name: 3km_estimated_households_annual_income_3_4_million_yen_9_classes_23t
-        description: "3km|推計世帯（年収300-400万未満_9階級）23T"
-      - name: 3km_estimated_households_annual_income_4_5_million_yen_9_classes_23t
-        description: "3km|推計世帯（年収400-500万未満_9階級）23T"
-      - name: 3km_estimated_households_annual_income_5_7_million_yen_9_classes_23t
-        description: "3km|推計世帯（年収500-700万未満_9階級）23T"
-      - name: 3km_estimated_households_annual_income_7_10_million_yen_9_classes_23t
-        description: "3km|推計世帯（年収700-1000万未満_9階級）23T"
-      - name: 3km_estimated_households_annual_income_10_15_million_yen_9_classes_23t
-        description: "3km|推計世帯（年収1000-1500万未満_9階級）23T"
-      - name: 3km_estimated_households_annual_income_over_15_years_old_9_classes_23t
-        description: "3km|推計世帯（年収1500万以上_9階級）23T"
-      - name: 3km_communication_mobile_phone_communication_fee_23t20hp
-        description: "3km|通信_携帯電話通信料23T20HP"
-      - name: 3km_education_tuition_fees_etc_total_23t20hp
-        description: "3km|教育_授業料等合計23T20HP"
-      - name: 5km_total_population_20t
-        description: "5km|人口総数20T"
-      - name: 5km_population_0_4_years_old_20t
-        description: "5km|人口（0-4歳）20T"
-      - name: 5km_population_5_9_years_old_20t
-        description: "5km|人口（5-9歳）20T"
-      - name: 5km_population_10_14_years_old_20t
-        description: "5km|人口（10-14歳）20T"
-      - name: 5km_population_15_19_years_old_20t
-        description: "5km|人口（15-19歳）20T"
-      - name: 5km_population_20_24_years_old_20t
-        description: "5km|人口（20-24歳）20T"
-      - name: 5km_population_25_29_years_old_20t
-        description: "5km|人口（25-29歳）20T"
-      - name: 5km_population_30_34_years_old_20t
-        description: "5km|人口（30-34歳）20T"
-      - name: 5km_population_35_39_years_old_20t
-        description: "5km|人口（35-39歳）20T"
-      - name: 5km_population_40_44_years_old_20t
-        description: "5km|人口（40-44歳）20T"
-      - name: 5km_population_45_49_years_old_20t
-        description: "5km|人口（45-49歳）20T"
-      - name: 5km_population_50_54_years_old_20t
-        description: "5km|人口（50-54歳）20T"
-      - name: 5km_population_55_59_years_old_20t
-        description: "5km|人口（55-59歳）20T"
-      - name: 5km_population_60_64_years_old_20t
-        description: "5km|人口（60-64歳）20T"
-      - name: 5km_population_65_69_years_old_20t
-        description: "5km|人口（65-69歳）20T"
-      - name: 5km_population_70_74_years_old_20t
-        description: "5km|人口（70-74歳）20T"
-      - name: 5km_population_75_79_years_old_20t
-        description: "5km|人口（75-79歳）20T"
-      - name: 5km_population_under_6_years_old_20t
-        description: "5km|人口（6歳未満）20T※"
-      - name: 5km_population_under_15_years_old_20t
-        description: "5km|人口（15歳未満）20T"
-      - name: 5km_population_over_65_20t
-        description: "5km|人口（65歳以上）20T"
-      - name: 5km_population_under_18_years_old_20t
-        description: "5km|人口（18歳未満）20T※"
-      - name: 5km_20t_general_households
-        description: "5km|一般世帯数20T"
-      - name: 5km_1_person_household_20t
-        description: "5km|1人世帯20T"
-      - name: 5km_2_person_household_20t
-        description: "5km|2人世帯20T"
-      - name: 5km_3_person_household_20t
-        description: "5km|3人世帯20T"
-      - name: 5km_4_person_household_20t
-        description: "5km|4人世帯20T"
-      - name: 5km_5_person_household_20t
-        description: "5km|5人世帯20T"
-      - name: 5km_6_person_household_20t
-        description: "5km|6人世帯20T"
-      - name: 5km_households_of_7_or_more_people_20t
-        description: "5km|7人以上世帯20T"
-      - name: 5km_households_of_3_or_more_people_20t
-        description: "5km|3人以上世帯20T"
-      - name: 5km_number_of_general_households_nuclear_families_20t
-        description: "5km|一般世帯数（核家族世帯）20T"
-      - name: 5km_number_of_ordinary_households_households_with_only_a_married_couple_20t
-        description: "5km|一般世帯数（夫婦のみの世帯）20T"
-      - name: 5km_number_of_ordinary_households_households_consisting_of_a_couple_and_children_20t
-        description: "5km|一般世帯数（夫婦と子供から成る世帯）20T"
-      - name: 5km_number_of_ordinary_households_single_households_20t
-        description: "5km|一般世帯数（単独世帯）20T"
-      - name: 5km_number_of_ordinary_households_households_other_than_nuclear_families_20t
-        description: "5km|一般世帯数（核家族以外の世帯）20T"
-      - name: 5km_number_of_general_households_households_consisting_of_a_husband_aged_65_or_over_and_a_wife_aged_60_or_over_20t
-        description: "5km|一般世帯数（夫65歳以上，妻60歳以上の夫婦のみの世帯）20T"
-      - name: 5km_number_of_general_households_single_households_aged_65_or_over_20t
-        description: "5km|一般世帯数（65歳以上の単独世帯）20T"
-      - name: 5km_population_students_20t
-        description: "5km|人口（通学者）20T"
-      - name: 5km_estimated_households_annual_income_less_than_1_million_yen_9_classes_23t
-        description: "5km|推計世帯（年収100万未満_9階級）23T"
-      - name: 5km_estimated_households_annual_income_1_2_million_yen_9_classes_23t
-        description: "5km|推計世帯（年収100-200万未満_9階級）23T"
-      - name: 5km_estimated_households_annual_income_2_3_million_yen_9_classes_23t
-        description: "5km|推計世帯（年収200-300万未満_9階級）23T"
-      - name: 5km_estimated_households_annual_income_3_4_million_yen_9_classes_23t
-        description: "5km|推計世帯（年収300-400万未満_9階級）23T"
-      - name: 5km_estimated_households_annual_income_4_5_million_yen_9_classes_23t
-        description: "5km|推計世帯（年収400-500万未満_9階級）23T"
-      - name: 5km_estimated_households_annual_income_5_7_million_yen_9_classes_23t
-        description: "5km|推計世帯（年収500-700万未満_9階級）23T"
-      - name: 5km_estimated_households_annual_income_7_10_million_yen_9_classes_23t
-        description: "5km|推計世帯（年収700-1000万未満_9階級）23T"
-      - name: 5km_estimated_households_annual_income_10_15_million_yen_9_classes_23t
-        description: "5km|推計世帯（年収1000-1500万未満_9階級）23T"
-      - name: 5km_estimated_households_annual_income_of_15_million_yen_or_more_9_classes_23t
-        description: "5km|推計世帯（年収1500万以上_9階級）23T"
-      - name: 5km_communication_mobile_phone_communication_fee_23t20hp
-        description: "5km|通信_携帯電話通信料23T20HP"
-      - name: 5km_education_tuition_etc_total_23t20hp
-        description: "5km|教育_授業料等合計23T20HP"
-      - name: 10km_total_population_20t
-        description: "10km|人口総数20T"
-      - name: 10km_population_0_4_years_20t
-        description: "10km|人口（0-4歳）20T"
-      - name: 10km_population_5_9_years_old_20t
-        description: "10km|人口（5-9歳）20T"
-      - name: 10km_population_10_14_years_old_20t
-        description: "10km|人口（10-14歳）20T"
-      - name: 10km_population_15_19_years_old_20t
-        description: "10km|人口（15-19歳）20T"
-      - name: 10km_population_20_24_years_old_20t
-        description: "10km|人口（20-24歳）20T"
-      - name: 10km_population_25_29_years_old_20t
-        description: "10km|人口（25-29歳）20T"
-      - name: 10km_population_30_34_years_old_20t
-        description: "10km|人口（30-34歳）20T"
-      - name: 10km_population_35_39_years_old_20t
-        description: "10km|人口（35-39歳）20T"
-      - name: 10km_population_40_44_years_old_20t
-        description: "10km|人口（40-44歳）20T"
-      - name: 10km_population_45_49_years_old_20t
-        description: "10km|人口（45-49歳）20T"
-      - name: 10km_population_50_54_years_old_20t
-        description: "10km|人口（50-54歳）20T"
-      - name: 10km_population_55_59_years_old_20t
-        description: "10km|人口（55-59歳）20T"
-      - name: 10km_population_60_64_years_old_20t
-        description: "10km|人口（60-64歳）20T"
-      - name: 10km_population_65_69_years_old_20t
-        description: "10km|人口（65-69歳）20T"
-      - name: 10km_population_70_74_years_old_20t
-        description: "10km|人口（70-74歳）20T"
-      - name: 10km_population_75_79_years_old_20t
-        description: "10km|人口（75-79歳）20T"
-      - name: 10km_population_under_6_years_old_20t
-        description: "10km|人口（6歳未満）20T※"
-      - name: 10km_population_under_15_years_old_20t
-        description: "10km|人口（15歳未満）20T"
-      - name: 10km_population_over_65_20t
-        description: "10km|人口（65歳以上）20T"
-      - name: 10km_population_under_18_years_old_20t
-        description: "10km|人口（18歳未満）20T※"
-      - name: 10km_number_of_general_households_20t
-        description: "10km|一般世帯数20T"
-      - name: 10km_1_person_household_20t
-        description: "10km|1人世帯20T"
-      - name: 10km_2_person_household_20t
-        description: "10km|2人世帯20T"
-      - name: 10km_3_person_household_20t
-        description: "10km|3人世帯20T"
-      - name: 10km_4_person_household_20t
-        description: "10km|4人世帯20T"
-      - name: 10km_5_person_household_20t
-        description: "10km|5人世帯20T"
-      - name: 10km_6_person_household_20t
-        description: "10km|6人世帯20T"
-      - name: 10km_households_of_7_or_more_people_20t
-        description: "10km|7人以上世帯20T"
-      - name: 10km_households_of_3_or_more_people_20t
-        description: "10km|3人以上世帯20T"
-      - name: 10km_number_of_general_households_nuclear_families_20t
-        description: "10km|一般世帯数（核家族世帯）20T"
-      - name: 10km_number_of_ordinary_households_households_with_only_a_married_couple_20t
-        description: "10km|一般世帯数（夫婦のみの世帯）20T"
-      - name: 10km_number_of_ordinary_households_households_consisting_of_a_couple_and_children_20t
-        description: "10km|一般世帯数（夫婦と子供から成る世帯）20T"
-      - name: 10km_number_of_ordinary_households_single_households_20t
-        description: "10km|一般世帯数（単独世帯）20T"
-      - name: 10km_number_of_ordinary_households_households_other_than_nuclear_families_20t
-        description: "10km|一般世帯数（核家族以外の世帯）20T"
-      - name: 10km_number_of_general_households_households_consisting_of_a_husband_aged_65_or_over_and_a_wife_aged_60_or_over_20t
-        description: "10km|一般世帯数（夫65歳以上，妻60歳以上の夫婦のみの世帯）20T"
-      - name: 10km_number_of_general_households_single_households_aged_65_or_over_20t
-        description: "10km|一般世帯数（65歳以上の単独世帯）20T"
-      - name: 10km_population_students_20t
-        description: "10km|人口（通学者）20T"
-      - name: 10km_estimated_households_annual_income_less_than_1_million_yen_9_classes_23t
-        description: "10km|推計世帯（年収100万未満_9階級）23T"
-      - name: 10km_estimated_households_annual_income_1_2_million_yen_9_classes_23t
-        description: "10km|推計世帯（年収100-200万未満_9階級）23T"
-      - name: 10km_estimated_households_annual_income_2_3_million_yen_9_classes_23t
-        description: "10km|推計世帯（年収200-300万未満_9階級）23T"
-      - name: 10km_estimated_households_annual_income_3_4_million_yen_9_classes_23t
-        description: "10km|推計世帯（年収300-400万未満_9階級）23T"
-      - name: 10km_estimated_households_annual_income_4_5_million_yen_9_classes_23t
-        description: "10km|推計世帯（年収400-500万未満_9階級）23T"
-      - name: 10km_estimated_households_annual_income_5_7_million_yen_9_classes_23t
-        description: "10km|推計世帯（年収500-700万未満_9階級）23T"
-      - name: 10km_estimated_households_annual_income_7_10_million_yen_9_classes_23t
-        description: "10km|推計世帯（年収700-1000万未満_9階級）23T"
-      - name: 10km_estimated_households_annual_income_10_15_million_yen_9_classes_23t
-        description: "10km|推計世帯（年収1000-1500万未満_9階級）23T"
-      - name: 10km_estimated_households_annual_income_of_15_million_yen_or_more_9_classes_23t
-        description: "10km|推計世帯（年収1500万以上_9階級）23T"
-      - name: 10km_communication_mobile_phone_communication_fee_23t20hp
-        description: "10km|通信_携帯電話通信料23T20HP"
-      - name: 10km_education_tuition_etc_total_23t20hp
-        description: "10km|教育_授業料等合計23T20HP"
-      - name: 1km_daytime_population_20t20
-        description: "1km|昼間人口20T20"
-      - name: 1km_daytime_population_weighted_c_japandaytime_principal_component_score_1_20t
-        description: "1km|昼間人口ウェイト付c-japanDaytime主成分得点1_20T"
-      - name: 1km_daytime_population_weighted_c_japandaytime_principal_component_score_2_20t
-        description: "1km|昼間人口ウェイト付c-japanDaytime主成分得点2_20T"
-      - name: 1km_daytime_population_weighted_c_japandaytime_principal_component_score_3_20t
-        description: "1km|昼間人口ウェイト付c-japanDaytime主成分得点3_20T"
-      - name: 1km_daytime_population_weighted_c_japandaytime_principal_component_score_4_20t
-        description: "1km|昼間人口ウェイト付c-japanDaytime主成分得点4_20T"
-      - name: 1km_daytime_population_weighted_c_japandaytime_principal_component_score_5_20t
-        description: "1km|昼間人口ウェイト付c-japanDaytime主成分得点5_20T"
-      - name: 1km_daytime_population_weighted_c_japandaytime_principal_component_score_6_20t
-        description: "1km|昼間人口ウェイト付c-japanDaytime主成分得点6_20T"
-      - name: 1km_segment_a1_daytime_population_20t
-        description: "1km|セグメントA1_昼間人口20T"
-      - name: 1km_segment_a2_daytime_population_20t
-        description: "1km|セグメントA2_昼間人口20T"
-      - name: 1km_segment_b1_daytime_population_20t
-        description: "1km|セグメントB1_昼間人口20T"
-      - name: 1km_segment_c1_daytime_population_20t
-        description: "1km|セグメントC1_昼間人口20T"
-      - name: 1km_segment_c2_daytime_population_20t
-        description: "1km|セグメントC2_昼間人口20T"
-      - name: 1km_segment_d1_daytime_population_20t
-        description: "1km|セグメントD1_昼間人口20T"
-      - name: 1km_segment_d2_daytime_population_20t
-        description: "1km|セグメントD2_昼間人口20T"
-      - name: 1km_segment_d3_daytime_population_20t
-        description: "1km|セグメントD3_昼間人口20T"
-      - name: 1km_segment_d4_daytime_population_20t
-        description: "1km|セグメントD4_昼間人口20T"
-      - name: 1km_segment_e1_daytime_population_20t
-        description: "1km|セグメントE1_昼間人口20T"
-      - name: 1km_segment_e2_daytime_population_20t
-        description: "1km|セグメントE2_昼間人口20T"
-      - name: 1km_segment_e3_daytime_population_20t
-        description: "1km|セグメントE3_昼間人口20T"
-      - name: 1km_segment_e4_daytime_population_20t
-        description: "1km|セグメントE4_昼間人口20T"
-      - name: 1km_segment_f1_daytime_population_20t
-        description: "1km|セグメントF1_昼間人口20T"
-      - name: 1km_segment_f2_daytime_population_20t
-        description: "1km|セグメントF2_昼間人口20T"
-      - name: 1km_segment_f3_daytime_population_20t
-        description: "1km|セグメントF3_昼間人口20T"
-      - name: 1km_segment_f4_daytime_population_20t
-        description: "1km|セグメントF4_昼間人口20T"
-      - name: 1km_segment_f5_daytime_population_20t
-        description: "1km|セグメントF5_昼間人口20T"
-      - name: 1km_segment_g1_daytime_population_20t
-        description: "1km|セグメントG1_昼間人口20T"
-      - name: 1km_segment_g2_daytime_population_20t
-        description: "1km|セグメントG2_昼間人口20T"
-      - name: 1km_segment_g3_daytime_population_20t
-        description: "1km|セグメントG3_昼間人口20T"
-      - name: 1km_segment_g4_daytime_population_20t
-        description: "1km|セグメントG4_昼間人口20T"
-      - name: 2km_daytime_population_20t20
-        description: "2km|昼間人口20T20"
-      - name: 2km_daytime_population_weighted_c_japandaytime_principal_component_score_1_20t
-        description: "2km|昼間人口ウェイト付c-japanDaytime主成分得点1_20T"
-      - name: 2km_daytime_population_weighted_c_japandaytime_principal_component_score_2_20t
-        description: "2km|昼間人口ウェイト付c-japanDaytime主成分得点2_20T"
-      - name: 2km_daytime_population_weighted_c_japandaytime_principal_component_score_3_20t
-        description: "2km|昼間人口ウェイト付c-japanDaytime主成分得点3_20T"
-      - name: 2km_daytime_population_weighted_c_japandaytime_principal_component_score_4_20t
-        description: "2km|昼間人口ウェイト付c-japanDaytime主成分得点4_20T"
-      - name: 2km_daytime_population_weighted_c_japandaytime_principal_component_score_5_20t
-        description: "2km|昼間人口ウェイト付c-japanDaytime主成分得点5_20T"
-      - name: 2km_daytime_population_weighted_c_japandaytime_principal_component_score_6_20t
-        description: "2km|昼間人口ウェイト付c-japanDaytime主成分得点6_20T"
-      - name: 2km_segment_a1_daytime_population_20t
-        description: "2km|セグメントA1_昼間人口20T"
-      - name: 2km_segment_a2_daytime_population_20t
-        description: "2km|セグメントA2_昼間人口20T"
-      - name: 2km_segment_b1_daytime_population_20t
-        description: "2km|セグメントB1_昼間人口20T"
-      - name: 2km_segment_c1_daytime_population_20t
-        description: "2km|セグメントC1_昼間人口20T"
-      - name: 2km_segment_c2_daytime_population_20t
-        description: "2km|セグメントC2_昼間人口20T"
-      - name: 2km_segment_d1_daytime_population_20t
-        description: "2km|セグメントD1_昼間人口20T"
-      - name: 2km_segment_d2_daytime_population_20t
-        description: "2km|セグメントD2_昼間人口20T"
-      - name: 2km_segment_d3_daytime_population_20t
-        description: "2km|セグメントD3_昼間人口20T"
-      - name: 2km_segment_d4_daytime_population_20t
-        description: "2km|セグメントD4_昼間人口20T"
-      - name: 2km_segment_e1_daytime_population_20t
-        description: "2km|セグメントE1_昼間人口20T"
-      - name: 2km_segment_e2_daytime_population_20t
-        description: "2km|セグメントE2_昼間人口20T"
-      - name: 2km_segment_e3_daytime_population_20t
-        description: "2km|セグメントE3_昼間人口20T"
-      - name: 2km_segment_e4_daytime_population_20t
-        description: "2km|セグメントE4_昼間人口20T"
-      - name: 2km_segment_f1_daytime_population_20t
-        description: "2km|セグメントF1_昼間人口20T"
-      - name: 2km_segment_f2_daytime_population_20t
-        description: "2km|セグメントF2_昼間人口20T"
-      - name: 2km_segment_f3_daytime_population_20t
-        description: "2km|セグメントF3_昼間人口20T"
-      - name: 2km_segment_f4_daytime_population_20t
-        description: "2km|セグメントF4_昼間人口20T"
-      - name: 2km_segment_f5_daytime_population_20t
-        description: "2km|セグメントF5_昼間人口20T"
-      - name: 2km_segment_g1_daytime_population_20t
-        description: "2km|セグメントG1_昼間人口20T"
-      - name: 2km_segment_g2_daytime_population_20t
-        description: "2km|セグメントG2_昼間人口20T"
-      - name: 2km_segment_g3_daytime_population_20t
-        description: "2km|セグメントG3_昼間人口20T"
-      - name: 2km_segment_g4_daytime_population_20t
-        description: "2km|セグメントG4_昼間人口20T"
-      - name: 3km_daytime_population_20t20
-        description: "3km|昼間人口20T20"
-      - name: 3km_daytime_population_weighted_c_japandaytime_principal_component_score_1_20t
-        description: "3km|昼間人口ウェイト付c-japanDaytime主成分得点1_20T"
-      - name: 3km_daytime_population_weighted_c_japandaytime_principal_component_score_2_20t
-        description: "3km|昼間人口ウェイト付c-japanDaytime主成分得点2_20T"
-      - name: 3km_daytime_population_weighted_c_japandaytime_principal_component_score_3_20t
-        description: "3km|昼間人口ウェイト付c-japanDaytime主成分得点3_20T"
-      - name: 3km_daytime_population_weighted_c_japandaytime_principal_component_score_4_20t
-        description: "3km|昼間人口ウェイト付c-japanDaytime主成分得点4_20T"
-      - name: 3km_daytime_population_weighted_c_japandaytime_principal_component_score_5_20t
-        description: "3km|昼間人口ウェイト付c-japanDaytime主成分得点5_20T"
-      - name: 3km_daytime_population_weighted_c_japandaytime_principal_component_score_6_20t
-        description: "3km|昼間人口ウェイト付c-japanDaytime主成分得点6_20T"
-      - name: 3km_segment_a1_daytime_population_20t
-        description: "3km|セグメントA1_昼間人口20T"
-      - name: 3km_segment_a2_daytime_population_20t
-        description: "3km|セグメントA2_昼間人口20T"
-      - name: 3km_segment_b1_daytime_population_20t
-        description: "3km|セグメントB1_昼間人口20T"
-      - name: 3km_segment_c1_daytime_population_20t
-        description: "3km|セグメントC1_昼間人口20T"
-      - name: 3km_segment_c2_daytime_population_20t
-        description: "3km|セグメントC2_昼間人口20T"
-      - name: 3km_segment_d1_daytime_population_20t
-        description: "3km|セグメントD1_昼間人口20T"
-      - name: 3km_segment_d2_daytime_population_20t
-        description: "3km|セグメントD2_昼間人口20T"
-      - name: 3km_segment_d3_daytime_population_20t
-        description: "3km|セグメントD3_昼間人口20T"
-      - name: 3km_segment_d4_daytime_population_20t
-        description: "3km|セグメントD4_昼間人口20T"
-      - name: 3km_segment_e1_daytime_population_20t
-        description: "3km|セグメントE1_昼間人口20T"
-      - name: 3km_segment_e2_daytime_population_20t
-        description: "3km|セグメントE2_昼間人口20T"
-      - name: 3km_segment_e3_daytime_population_20t
-        description: "3km|セグメントE3_昼間人口20T"
-      - name: 3km_segment_e4_daytime_population_20t
-        description: "3km|セグメントE4_昼間人口20T"
-      - name: 3km_segment_f1_daytime_population_20t
-        description: "3km|セグメントF1_昼間人口20T"
-      - name: 3km_segment_f2_daytime_population_20t
-        description: "3km|セグメントF2_昼間人口20T"
-      - name: 3km_segment_f3_daytime_population_20t
-        description: "3km|セグメントF3_昼間人口20T"
-      - name: 3km_segment_f4_daytime_population_20t
-        description: "3km|セグメントF4_昼間人口20T"
-      - name: 3km_segment_f5_daytime_population_20t
-        description: "3km|セグメントF5_昼間人口20T"
-      - name: 3km_segment_g1_daytime_population_20t
-        description: "3km|セグメントG1_昼間人口20T"
-      - name: 3km_segment_g2_daytime_population_20t
-        description: "3km|セグメントG2_昼間人口20T"
-      - name: 3km_segment_g3_daytime_population_20t
-        description: "3km|セグメントG3_昼間人口20T"
-      - name: 3km_segment_g4_daytime_population_20t
-        description: "3km|セグメントG4_昼間人口20T"
-      - name: 5km_daytime_population_20t20
-        description: "5km|昼間人口20T20"
-      - name: 5km_daytime_population_weighted_c_japandaytime_principal_component_score_1_20t
-        description: "5km|昼間人口ウェイト付c-japanDaytime主成分得点1_20T"
-      - name: 5km_daytime_population_weighted_c_japandaytime_principal_component_score_2_20t
-        description: "5km|昼間人口ウェイト付c-japanDaytime主成分得点2_20T"
-      - name: 5km_daytime_population_weighted_c_japandaytime_principal_component_score_3_20t
-        description: "5km|昼間人口ウェイト付c-japanDaytime主成分得点3_20T"
-      - name: 5km_daytime_population_weighted_c_japandaytime_principal_component_score_4_20t
-        description: "5km|昼間人口ウェイト付c-japanDaytime主成分得点4_20T"
-      - name: 5km_daytime_population_weighted_c_japan_daytime_principal_component_score_5_20t
-        description: "5km|昼間人口ウェイト付c-japanDaytime主成分得点5_20T"
-      - name: 5km_daytime_population_weighted_c_japandaytime_principal_component_score_6_20t
-        description: "5km|昼間人口ウェイト付c-japanDaytime主成分得点6_20T"
-      - name: 5km_segment_a1_daytime_population_20t
-        description: "5km|セグメントA1_昼間人口20T"
-      - name: 5km_segment_a2_daytime_population_20t
-        description: "5km|セグメントA2_昼間人口20T"
-      - name: 5km_segment_b1_daytime_population_20t
-        description: "5km|セグメントB1_昼間人口20T"
-      - name: 5km_segment_c1_daytime_population_20t
-        description: "5km|セグメントC1_昼間人口20T"
-      - name: 5km_segment_c2_daytime_population_20t
-        description: "5km|セグメントC2_昼間人口20T"
-      - name: 5km_segment_d1_daytime_population_20t
-        description: "5km|セグメントD1_昼間人口20T"
-      - name: 5km_segment_d2_daytime_population_20t
-        description: "5km|セグメントD2_昼間人口20T"
-      - name: 5km_segment_d3_daytime_population_20t
-        description: "5km|セグメントD3_昼間人口20T"
-      - name: 5km_segment_d4_daytime_population_20t
-        description: "5km|セグメントD4_昼間人口20T"
-      - name: 5km_segment_e1_daytime_population_20t
-        description: "5km|セグメントE1_昼間人口20T"
-      - name: 5km_segment_e2_daytime_population_20t
-        description: "5km|セグメントE2_昼間人口20T"
-      - name: 5km_segment_e3_daytime_population_20t
-        description: "5km|セグメントE3_昼間人口20T"
-      - name: 5km_segment_e4_daytime_population_20t
-        description: "5km|セグメントE4_昼間人口20T"
-      - name: 5km_segment_f1_daytime_population_20t
-        description: "5km|セグメントF1_昼間人口20T"
-      - name: 5km_segment_f2_daytime_population_20t
-        description: "5km|セグメントF2_昼間人口20T"
-      - name: 5km_segment_f3_daytime_population_20t
-        description: "5km|セグメントF3_昼間人口20T"
-      - name: 5km_segment_f4_daytime_population_20t
-        description: "5km|セグメントF4_昼間人口20T"
-      - name: 5km_segment_f5_daytime_population_20t
-        description: "5km|セグメントF5_昼間人口20T"
-      - name: 5km_segment_g1_daytime_population_20t
-        description: "5km|セグメントG1_昼間人口20T"
-      - name: 5km_segment_g2_daytime_population_20t
-        description: "5km|セグメントG2_昼間人口20T"
-      - name: 5km_segment_g3_daytime_population_20t
-        description: "5km|セグメントG3_昼間人口20T"
-      - name: 5km_segment_g4_daytime_population_20t
-        description: "5km|セグメントG4_昼間人口20T"
-      - name: 10km_daytime_population_20t20
-        description: "10km|昼間人口20T20"
-      - name: 10km_daytime_population_weighted_c_japandaytime_principal_component_score_1_20t
-        description: "10km|昼間人口ウェイト付c-japanDaytime主成分得点1_20T"
-      - name: 10km_daytime_population_weighted_c_japandaytime_principal_component_score_2_20t
-        description: "10km|昼間人口ウェイト付c-japanDaytime主成分得点2_20T"
-      - name: 10km_daytime_population_weighted_c_japandaytime_principal_component_score_3_20t
-        description: "10km|昼間人口ウェイト付c-japanDaytime主成分得点3_20T"
-      - name: 10km_daytime_population_weighted_c_japandaytime_principal_component_score_4_20t
-        description: "10km|昼間人口ウェイト付c-japanDaytime主成分得点4_20T"
-      - name: 10km_daytime_population_weighted_c_japandaytime_principal_component_score_5_20t
-        description: "10km|昼間人口ウェイト付c-japanDaytime主成分得点5_20T"
-      - name: 10km_daytime_population_weighted_c_japandaytime_principal_component_score_6_20t
-        description: "10km|昼間人口ウェイト付c-japanDaytime主成分得点6_20T"
-      - name: 10km_segment_a1_daytime_population_20t
-        description: "10km|セグメントA1_昼間人口20T"
-      - name: 10km_segment_a2_daytime_population_20t
-        description: "10km|セグメントA2_昼間人口20T"
-      - name: 10km_segment_b1_daytime_population_20t
-        description: "10km|セグメントB1_昼間人口20T"
-      - name: 10km_segment_c1_daytime_population_20t
-        description: "10km|セグメントC1_昼間人口20T"
-      - name: 10km_segment_c2_daytime_population_20t
-        description: "10km|セグメントC2_昼間人口20T"
-      - name: 10km_segment_d1_daytime_population_20t
-        description: "10km|セグメントD1_昼間人口20T"
-      - name: 10km_segment_d2_daytime_population_20t
-        description: "10km|セグメントD2_昼間人口20T"
-      - name: 10km_segment_d3_daytime_population_20t
-        description: "10km|セグメントD3_昼間人口20T"
-      - name: 10km_segment_d4_daytime_population_20t
-        description: "10km|セグメントD4_昼間人口20T"
-      - name: 10km_segment_e1_daytime_population_20t
-        description: "10km|セグメントE1_昼間人口20T"
-      - name: 10km_segment_e2_daytime_population_20t
-        description: "10km|セグメントE2_昼間人口20T"
-      - name: 10km_segment_e3_daytime_population_20t
-        description: "10km|セグメントE3_昼間人口20T"
-      - name: 10km_segment_e4_daytime_population_20t
-        description: "10km|セグメントE4_昼間人口20T"
-      - name: 10km_segment_f1_daytime_population_20t
-        description: "10km|セグメントF1_昼間人口20T"
-      - name: 10km_segment_f2_daytime_population_20t
-        description: "10km|セグメントF2_昼間人口20T"
-      - name: 10km_segment_f3_daytime_population_20t
-        description: "10km|セグメントF3_昼間人口20T"
-      - name: 10km_segment_f4_daytime_population_20t
-        description: "10km|セグメントF4_昼間人口20T"
-      - name: 10km_segment_f5_daytime_population_20t
-        description: "10km|セグメントF5_昼間人口20T"
-      - name: 10km_segment_g1_daytime_population_20t
-        description: "10km|セグメントG1_昼間人口20T"
-      - name: 10km_segment_g2_daytime_population_20t
-        description: "10km|セグメントG2_昼間人口20T"
-      - name: 10km_segment_g3_daytime_population_20t
-        description: "10km|セグメントG3_昼間人口20T"
-      - name: 10km_segment_g4_daytime_population_20t
-        description: "10km|セグメントG4_昼間人口20T"
-      - name: all_day_ttl
-        description: "全日|TTL"
-      - name: all_day_male
-        description: "全日|男性"
-      - name: all_day_women
-        description: "全日|女性"
-      - name: all_day_20s
-        description: "全日|20代"
-      - name: all_day_30s
-        description: "全日|30代"
-      - name: all_day_40s
-        description: "全日|40代"
-      - name: all_day_50s
-        description: "全日|50代"
-      - name: all_day_60s
-        description: "全日|60代"
-      - name: all_day_ages_70_and_over
-        description: "全日|70歳以上"
-      - name: full_day_resident
-        description: "全日|居住者"
-      - name: full_time_employee
-        description: "全日|勤務者"
-      - name: all_day_visitors
-        description: "全日|来街者"
-      - name: weekdays_ttl
-        description: "平日|TTL"
-      - name: weekdays_men
-        description: "平日|男性"
-      - name: weekdays_women
-        description: "平日|女性"
-      - name: weekdays_20s
-        description: "平日|20代"
-      - name: weekdays_30s
-        description: "平日|30代"
-      - name: weekdays_40s
-        description: "平日|40代"
-      - name: weekdays_50s
-        description: "平日|50代"
-      - name: weekdays_60s
-        description: "平日|60代"
-      - name: weekdays_70_years_old_and_over
-        description: "平日|70歳以上"
-      - name: weekdays_resident
-        description: "平日|居住者"
-      - name: weekdays_worker
-        description: "平日|勤務者"
-      - name: weekdays_visitors
-        description: "平日|来街者"
-      - name: holidays_ttl
-        description: "休日|TTL"
-      - name: holidays_men
-        description: "休日|男性"
-      - name: holidays_women
-        description: "休日|女性"
-      - name: holiday_20s
-        description: "休日|20代"
-      - name: holidays_30s
-        description: "休日|30代"
-      - name: holiday_40s
-        description: "休日|40代"
-      - name: holidays_50s
-        description: "休日|50代"
-      - name: holidays_60s
-        description: "休日|60代"
-      - name: holidays_70_years_old_and_over
-        description: "休日|70歳以上"
-      - name: holidays_residents
-        description: "休日|居住者"
-      - name: holidays_workers
-        description: "休日|勤務者"
-      - name: holidays_visitors
-        description: "休日|来街者"
   - name: stg_facility_daily_deviation_zscore
     description: "施設別・日別の偏差値ベースZスコアrawテーブル"
     columns:
@@ -1009,16 +44,25 @@ models:
 
       - name: z_score
         description: "偏差値ベースのZスコア"
+        tests:
+          - not_null
 
       - name: month
         description: "月番号"
+        tests:
+          - not_null
 
-      - name: weekday_monthly
+      - name: week_number_monthly
         description: "週番号（月）"
+        tests:
+          - not_null
 
       - name: date_flag
         description: "日付フラグ"
-  - name: stg_facility_foot_traffic_sum_and_decile_by_flag
+        tests:
+          - not_null
+
+  - name: stg_facility_foot_traffic_avg_and_decile_by_flag
     description: "施設別・日付フラグ別の人流合計およびデシル区分stagingテーブル"
     columns:
       - name: facility_code
@@ -1032,59 +76,96 @@ models:
         tests:
           - not_null
 
-      - name: gw_foot_traffic_total
-        description: "GW人流合計"
+      - name: gw_foot_traffic_avg
+        description: "GW人流平均"
+        tests:
+          - not_null
 
-      - name: obon_foot_traffic_total
-        description: "お盆人流合計"
+      - name: obon_foot_traffic_avg
+        description: "お盆人流平均"
+        tests:
+          - not_null
 
-      - name: three_day_holiday_foot_traffic_total
-        description: "三連休人流合計"
+      - name: three_day_holiday_foot_traffic_avg
+        description: "三連休人流平均"
+        tests:
+          - not_null
 
-      - name: new_year_foot_traffic_total
-        description: "正月人流合計"
+      - name: new_year_foot_traffic_avg
+        description: "正月人流平均"
+        tests:
+          - not_null
 
-      - name: regular_weekend_foot_traffic_total
-        description: "通常土日人流合計"
+      - name: regular_weekend_foot_traffic_avg
+        description: "通常土日人流平均"
+        tests:
+          - not_null
 
-      - name: year_end_foot_traffic_total
-        description: "年末人流合計"
+      - name: year_end_foot_traffic_avg
+        description: "年末人流平均"
+        tests:
+          - not_null
 
-      - name: bridge_holiday_foot_traffic_total
-        description: "飛び石祝日人流合計"
+      - name: bridge_holiday_foot_traffic_avg
+        description: "飛び石祝日人流平均"
+        tests:
+          - not_null
 
-      - name: weekday_foot_traffic_total
-        description: "平日人流合計"
+      - name: weekday_foot_traffic_avg
+        description: "平日人流平均"
+        tests:
+          - not_null
 
-      - name: black_friday_foot_traffic_total
-        description: "ブラックフライデー人流合計"
+      - name: black_friday_foot_traffic_avg
+        description: "ブラックフライデー人流平均"
+        tests:
+          - not_null
 
       - name: gw_decile_rank
         description: "GWデシル区分"
+        tests:
+          - not_null
 
       - name: obon_decile_rank
         description: "お盆デシル区分"
+        tests:
+          - not_null
 
       - name: three_day_holiday_decile_rank
         description: "三連休デシル区分"
+        tests:
+          - not_null
 
       - name: new_year_decile_rank
         description: "正月デシル区分"
+        tests:
+          - not_null
 
       - name: regular_weekend_decile_rank
         description: "通常土日デシル区分"
+        tests:
+          - not_null
 
       - name: year_end_decile_rank
         description: "年末デシル区分"
+        tests:
+          - not_null
 
       - name: bridge_holiday_decile_rank
         description: "飛び石祝日デシル区分"
+        tests:
+          - not_null
 
       - name: weekday_decile_rank
         description: "平日デシル区分"
+        tests:
+          - not_null
 
       - name: black_friday_decile_rank
         description: "ブラックフライデーデシル区分"
+        tests:
+          - not_null
+
   - name: stg_date_master_2025_2026
     description: "日付マスタのstagingテーブル"
     columns:
@@ -1096,36 +177,57 @@ models:
 
       - name: year_month
         description: "年月"
+        tests:
+          - not_null
 
       - name: week_number_yearly
         description: "週番号（月間_1-52（53））"
+        tests:
+          - not_null
 
       - name: week_number_monthly
         description: "週番号（月間_1-4（5））"
+        tests:
+          - not_null
 
       - name: weekday_name
         description: "曜日"
+        tests:
+          - not_null
 
       - name: holiday_name
         description: "祝日名"
 
       - name: is_holiday
         description: "祝日フラグ"
+        tests:
+          - not_null
 
       - name: weekday_holiday_weekend
         description: "平日/休日（土日のみ）"
+        tests:
+          - not_null
 
       - name: weekday_holiday_with_holiday
         description: "平日/休日（祝日加味）"
+        tests:
+          - not_null
 
       - name: is_offday
         description: "休日フラグ"
+        tests:
+          - not_null
 
       - name: date_type
         description: "日付属性"
+        tests:
+          - not_null
 
       - name: date_flag
         description: "日付種別"
+        tests:
+          - not_null
+
   - name: stg_date_master_2026_2027
     description: "日付マスタのstagingテーブル"
     columns:
@@ -1137,36 +239,56 @@ models:
 
       - name: year_month
         description: "年月"
+        tests:
+          - not_null
 
       - name: week_number_yearly
         description: "週番号（月間_1-52（53））"
+        tests:
+          - not_null
 
       - name: week_number_monthly
         description: "週番号（月間_1-4（5））"
+        tests:
+          - not_null
 
       - name: weekday_name
         description: "曜日"
+        tests:
+          - not_null
 
       - name: holiday_name
         description: "祝日名"
 
       - name: is_holiday
         description: "祝日フラグ"
+        tests:
+          - not_null
 
       - name: weekday_holiday_weekend
         description: "平日/休日（土日のみ）"
+        tests:
+          - not_null
 
       - name: weekday_holiday_with_holiday
         description: "平日/休日（祝日加味）"
+        tests:
+          - not_null
 
       - name: is_offday
         description: "休日フラグ"
+        tests:
+          - not_null
 
       - name: date_type
         description: "日付属性"
+        tests:
+          - not_null
 
       - name: date_flag
         description: "日付種別"
+        tests:
+          - not_null
 
   - name: stg_venue_performance
     description: "会場別・日別実績のstagingテーブル"
