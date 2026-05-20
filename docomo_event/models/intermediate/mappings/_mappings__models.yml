@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_facility_event_decile_mapping
-    description: "施設・月・月内週番号・日付フラグごとのデシルランク割当中間モデル"
+    description: "施設・月・月内週番号・日付フラグごとのデシルランク割当intermediateモデル"
     columns:
       - name: facility_code
         description: "施設コード"

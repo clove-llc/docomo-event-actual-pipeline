@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_facility_daily_actual
-    description: "施設別・日別実績に施設属性と日付属性を付与した中間モデル"
+    description: "施設別・日別実績に施設属性と日付属性を付与したintermediateモデル"
     columns:
       - name: facility_code
         description: "施設コード"

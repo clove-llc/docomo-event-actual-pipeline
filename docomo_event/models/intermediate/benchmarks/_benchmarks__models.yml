@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_benchmark_periods
-    description: "ベンチマーク期間を定義する中間モデル"
+    description: "ベンチマーク期間を定義するintermediateモデル"
     columns:
       - name: benchmark_period_key
         description: "ベンチマーク期間キー"
@@ -15,7 +15,7 @@ models:
       - name: period_month_count
         description: "期間の月数"
   - name: int_facility_event_decile_avg_actual
-    description: "施設・月・月内週番号・日付フラグ・デシル区分ごとの平均実績中間モデル"
+    description: "施設・月・月内週番号・日付フラグ・デシル区分ごとの平均実績intermediateモデル"
     columns:
       - name: benchmark_period_key
         description: "ベンチマーク期間キー"
@@ -59,7 +59,7 @@ models:
       - name: avg_actual
         description: "平均実績"
   - name: int_event_decile_benchmark
-    description: "月・月内週番号・日付フラグ・デシル区分ごとの実績分位点を施設別に付与した中間モデル"
+    description: "月・月内週番号・日付フラグ・デシル区分ごとの実績分位点を施設別に付与したintermediateモデル"
     columns:
       - name: benchmark_period_key
         description: "ベンチマーク期間キー"

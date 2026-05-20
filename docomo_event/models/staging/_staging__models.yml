@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: stg_facility_master
-    description: "施設マスタのstagingテーブル。スプレッドシート由来の施設情報を保持する。"
+    description: "施設マスタのstagingモデル。スプレッドシート由来の施設情報を保持する。"
     columns:
       - name: facility_code
         description: "施設コード"
@@ -25,7 +25,7 @@ models:
         description: "支店"
 
   - name: stg_facility_daily_deviation_zscore
-    description: "施設別・日別の偏差値ベースZスコアrawテーブル"
+    description: "施設別・日別の偏差値ベースZスコアstagingモデル"
     columns:
       - name: date
         description: "日付"
@@ -63,7 +63,7 @@ models:
           - not_null
 
   - name: stg_facility_foot_traffic_avg_and_decile_by_flag
-    description: "施設別・日付フラグ別の人流合計およびデシル区分stagingテーブル"
+    description: "施設別・日付フラグ別の人流合計およびデシル区分stagingモデル"
     columns:
       - name: facility_code
         description: "施設コード"
@@ -167,7 +167,7 @@ models:
           - not_null
 
   - name: stg_date_master_2025_2026
-    description: "日付マスタのstagingテーブル"
+    description: "日付マスタのstagingモデル"
     columns:
       - name: date
         description: "日付"
@@ -229,7 +229,7 @@ models:
           - not_null
 
   - name: stg_date_master_2026_2027
-    description: "日付マスタのstagingテーブル"
+    description: "日付マスタのstagingモデル"
     columns:
       - name: date
         description: "日付"
@@ -291,7 +291,7 @@ models:
           - not_null
 
   - name: stg_venue_performance
-    description: "会場別・日別実績のstagingテーブル"
+    description: "会場別・日別実績のstagingモデル"
     columns:
       - name: datasource
         description: "データソース"

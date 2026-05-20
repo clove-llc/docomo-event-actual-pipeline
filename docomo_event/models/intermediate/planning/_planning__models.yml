@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_facility_event_planning_snapshot
-    description: "施設・月・月内週番号・日付フラグごとの標準目標値とチャレンジ目標値を算出する中間モデル"
+    description: "施設・月・月内週番号・日付フラグごとの標準目標値とチャレンジ目標値を算出するintermediateモデル"
     columns:
       - name: benchmark_period_key
         description: "ベンチマーク期間キー"
