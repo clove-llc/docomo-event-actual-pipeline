@@ -1,4 +1,3 @@
--- depends_on: {{ ref("stg_facility_foot_traffic_avg_and_decile_by_flag") }}
 WITH unpivoted AS (
   SELECT
     facility_code,
