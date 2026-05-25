@@ -60,7 +60,4 @@ Thumbs.db
 .env
 .env.*
 
-# =========================
-# GCP / credentials
-# =========================
-*.json
+cloud-run-sa.json

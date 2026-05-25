@@ -295,6 +295,7 @@ sources:
             description: "日付種別"
             tests:
               - not_null
+
       - name: raw_venue_performance
         description: "会場別・日別実績のrawモデル"
         columns:
