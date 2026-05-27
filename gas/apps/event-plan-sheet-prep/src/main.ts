@@ -73,7 +73,7 @@ type SettingsFromCellMap<T extends CellMap> = {
 type CommonSettings = {
   targetYear: string;
   targetMonth: number;
-  targetMonthForDateSheet: number;
+  targetMonthZeroBased: number;
   targetMonthSpreadsheetUrl: string;
   constraintSpreadsheetUrl: string;
   constraintSheetName: string;
@@ -93,8 +93,8 @@ function getCommonSettings(): CommonSettings {
 
   return {
     ...raw,
-    targetMonth,
-    targetMonthForDateSheet: targetMonth - 1,
+    targetMonth: Number(raw.targetMonth),
+    targetMonthZeroBased: Number(raw.targetMonth) - 1,
   };
 }
 
@@ -181,7 +181,7 @@ function replaceYearAndMonthInFiles(
   targetYearCell: string,
   targetMonthCell: string,
   targetYear: string,
-  targetMonth: number,
+  targetMonthZeroBased: number,
 ) {
   let processedCount = 0;
   const activeSpreadsheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
@@ -206,7 +206,7 @@ function replaceYearAndMonthInFiles(
       }
 
       targetSheet.getRange(targetYearCell).setValue(targetYear);
-      targetSheet.getRange(targetMonthCell).setValue(targetMonth);
+      targetSheet.getRange(targetMonthCell).setValue(targetMonthZeroBased);
 
       Logger.log(
         `更新成功: [${targetFile.getName()}] の ${targetSheetName}!${targetYearCell}, ${targetMonthCell}`,
@@ -214,7 +214,8 @@ function replaceYearAndMonthInFiles(
 
       processedCount++;
     } catch (e) {
-      Logger.log(`エラー発生 [${targetFile.getName()}]: ${e.toString()}`);
+      const message = e instanceof Error ? e.message : String(e);
+      Logger.log(`エラー発生 [${targetFile.getName()}]: ${message}`);
     }
   }
 
@@ -259,7 +260,8 @@ function replaceImportRangeSpreadsheetUrlInFiles(
 
       processedCount++;
     } catch (e) {
-      Logger.log(`エラー発生 [${targetFile.getName()}]: ${e.toString()}`);
+      const message = e instanceof Error ? e.message : String(e);
+      Logger.log(`エラー発生 [${targetFile.getName()}]: ${message}`);
     }
   }
 
@@ -313,6 +315,7 @@ function setupInputSpreadSheets(
 ) {
   const {
     targetMonth,
+    targetMonthZeroBased,
     targetYear,
     constraintSpreadsheetUrl,
     constraintSheetName,
@@ -344,7 +347,7 @@ function setupInputSpreadSheets(
 
   Logger.log("1. 制約条件シートのURLを更新中...");
   replaceImportRangeSpreadsheetUrlInFiles(
-    newInputFolder.getFilesByType(MimeType.GOOGLE_SHEETS),
+    newInputFolder.getFilesByType("application/vnd.google-apps.spreadsheet"),
     constraintSheetName,
     constraintSheetTargetCell,
     constraintSpreadsheetUrl,
@@ -353,7 +356,7 @@ function setupInputSpreadSheets(
 
   Logger.log("2. インプットデータシートのURLを更新中...");
   replaceImportRangeSpreadsheetUrlInFiles(
-    newInputFolder.getFilesByType(MimeType.GOOGLE_SHEETS),
+    newInputFolder.getFilesByType("application/vnd.google-apps.spreadsheet"),
     inputDataSheetName,
     inputDataSheetTargetCell,
     newPrepFileUrl,
@@ -362,12 +365,12 @@ function setupInputSpreadSheets(
 
   Logger.log("インプットシートの日付情報を更新中...");
   replaceYearAndMonthInFiles(
-    newInputFolder.getFilesByType(MimeType.GOOGLE_SHEETS),
+    newInputFolder.getFilesByType("application/vnd.google-apps.spreadsheet"),
     dateSheetName,
     dateSheetTargetYearCell,
     dateSheetTargetMonthCell,
     targetYear,
-    targetMonth,
+    targetMonthZeroBased,
   );
   Logger.log("更新完了。");
 }
@@ -378,6 +381,7 @@ function setupOutputSpreadSheets(
 ) {
   const {
     targetMonth,
+    targetMonthZeroBased,
     targetYear,
     constraintSpreadsheetUrl,
     constraintSheetName,
@@ -409,7 +413,7 @@ function setupOutputSpreadSheets(
 
   Logger.log("1. 制約条件シートのURLを更新中...");
   replaceImportRangeSpreadsheetUrlInFiles(
-    newOutputFolder.getFilesByType(MimeType.GOOGLE_SHEETS),
+    newOutputFolder.getFilesByType("application/vnd.google-apps.spreadsheet"),
     constraintSheetName,
     constraintSheetTargetCell,
     constraintSpreadsheetUrl,
@@ -418,7 +422,7 @@ function setupOutputSpreadSheets(
 
   Logger.log("2. インプットデータシートのURLを更新中...");
   replaceImportRangeSpreadsheetUrlInFiles(
-    newOutputFolder.getFilesByType(MimeType.GOOGLE_SHEETS),
+    newOutputFolder.getFilesByType("application/vnd.google-apps.spreadsheet"),
     inputDataSheetName,
     inputDataSheetTargetCell,
     newPrepFileUrl,
@@ -427,12 +431,12 @@ function setupOutputSpreadSheets(
 
   Logger.log("アウトプットシートの日付情報を更新中...");
   replaceYearAndMonthInFiles(
-    newOutputFolder.getFilesByType(MimeType.GOOGLE_SHEETS),
+    newOutputFolder.getFilesByType("application/vnd.google-apps.spreadsheet"),
     dateSheetName,
     dateSheetTargetYearCell,
     dateSheetTargetMonthCell,
     targetYear,
-    targetMonth,
+    targetMonthZeroBased,
   );
   Logger.log("更新完了。");
 }

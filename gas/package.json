@@ -1,0 +1,22 @@
+{
+  "name": "gas-data-prep",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build:event-plan-sheet-prep": "rm -rf apps/event-plan-sheet-prep/dist && tsc --outDir apps/event-plan-sheet-prep/dist --rootDir apps/event-plan-sheet-prep/src --skipLibCheck apps/event-plan-sheet-prep/src/main.ts && cp apps/event-plan-sheet-prep/appsscript.json apps/event-plan-sheet-prep/dist/appsscript.json",
+    "push:event-plan-sheet-prep": "npm run build:event-plan-sheet-prep && cd apps/event-plan-sheet-prep && clasp push",
+    "build:branch-target-sheet-builder": "rm -rf apps/branch-target-sheet-builder/dist && tsc --outDir apps/branch-target-sheet-builder/dist --rootDir apps/branch-target-sheet-builder/src --skipLibCheck apps/branch-target-sheet-builder/src/main.ts && cp apps/branch-target-sheet-builder/appsscript.json apps/branch-target-sheet-builder/dist/appsscript.json",
+    "push:branch-target-sheet-builder": "npm run build:branch-target-sheet-builder && cd apps/branch-target-sheet-builder && clasp push",
+    "build:dbt-docs-webapp": "rm -rf apps/dbt-docs-webapp/dist && tsc --outDir apps/dbt-docs-webapp/dist --rootDir apps/dbt-docs-webapp/src --skipLibCheck apps/dbt-docs-webapp/src/main.ts && cp apps/dbt-docs-webapp/appsscript.json apps/dbt-docs-webapp/dist/appsscript.json && cp apps/dbt-docs-webapp/src/*.html apps/dbt-docs-webapp/dist/ || true",
+    "push:dbt-docs-webapp": "npm run build:dbt-docs-webapp && cd apps/dbt-docs-webapp && clasp push"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@google/clasp": "^3.3.0",
+    "@types/google-apps-script": "^2.0.9",
+    "typescript": "^5.9.3"
+  }
+}
