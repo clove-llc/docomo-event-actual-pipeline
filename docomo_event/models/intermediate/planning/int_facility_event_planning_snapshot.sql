@@ -1,6 +1,6 @@
 WITH date_flags AS (
   SELECT s_d_m.date_flag
-  FROM {{ ref("stg_date_master_2025_2026") }} AS s_d_m
+  FROM {{ ref("stg_date_master") }} AS s_d_m
   GROUP BY
     s_d_m.date_flag
 ),
