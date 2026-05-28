@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build:event-plan-sheet-prep": "rm -rf apps/event-plan-sheet-prep/dist && tsc --outDir apps/event-plan-sheet-prep/dist --rootDir apps/event-plan-sheet-prep/src --skipLibCheck apps/event-plan-sheet-prep/src/main.ts && cp apps/event-plan-sheet-prep/appsscript.json apps/event-plan-sheet-prep/dist/appsscript.json",
-    "push:event-plan-sheet-prep": "npm run build:event-plan-sheet-prep && cd apps/event-plan-sheet-prep && clasp push",
     "build:branch-target-sheet-builder": "rm -rf apps/branch-target-sheet-builder/dist && tsc --outDir apps/branch-target-sheet-builder/dist --rootDir apps/branch-target-sheet-builder/src --skipLibCheck apps/branch-target-sheet-builder/src/main.ts && cp apps/branch-target-sheet-builder/appsscript.json apps/branch-target-sheet-builder/dist/appsscript.json",
-    "push:branch-target-sheet-builder": "npm run build:branch-target-sheet-builder && cd apps/branch-target-sheet-builder && clasp push"
+    "push:branch-target-sheet-builder": "npm run build:branch-target-sheet-builder && cd apps/branch-target-sheet-builder && clasp push",
+    "build:event-actuals-normalizer": "rm -rf apps/event-actuals-normalizer/dist && tsc --outDir apps/event-actuals-normalizer/dist --rootDir apps/event-actuals-normalizer/src --skipLibCheck apps/event-actuals-normalizer/src/main.ts && cp apps/event-actuals-normalizer/appsscript.json apps/event-actuals-normalizer/dist/appsscript.json",
+    "push:event-actuals-normalizer": "npm run build:event-actuals-normalizer && cd apps/event-actuals-normalizer && clasp push",
+    "build:event-plan-sheet-prep": "rm -rf apps/event-plan-sheet-prep/dist && tsc --outDir apps/event-plan-sheet-prep/dist --rootDir apps/event-plan-sheet-prep/src --skipLibCheck apps/event-plan-sheet-prep/src/main.ts && cp apps/event-plan-sheet-prep/appsscript.json apps/event-plan-sheet-prep/dist/appsscript.json",
+    "push:event-plan-sheet-prep": "npm run build:event-plan-sheet-prep && cd apps/event-plan-sheet-prep && clasp push"
   },
   "keywords": [],
   "author": "",
