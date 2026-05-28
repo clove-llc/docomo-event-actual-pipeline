@@ -172,6 +172,88 @@ sources:
             tests:
               - not_null
 
+      - name: raw_date_master
+        description: "日付マスタのrawモデル"
+        columns:
+          - name: date
+            description: "日付"
+            tests:
+              - not_null
+              - unique
+
+          - name: year_month
+            description: "年月"
+            tests:
+              - not_null
+
+          - name: year
+            description: "年度"
+            tests:
+              - not_null
+
+          - name: month
+            description: "月"
+            tests:
+              - not_null
+
+          - name: day
+            description: "日"
+            tests:
+              - not_null
+
+          - name: week_number_yearly
+            description: "週番号（月間_1-52（53））"
+            tests:
+              - not_null
+
+          - name: week_number_monthly
+            description: "週番号（月間_1-4（5））"
+            tests:
+              - not_null
+
+          - name: weekday_name
+            description: "曜日"
+            tests:
+              - not_null
+
+          - name: weekday_name_and_week_number_monthly
+            description: "曜日（週番号）"
+            tests:
+              - not_null
+
+          - name: weekday_holiday_weekend
+            description: "平日/休日（土日のみ）"
+            tests:
+              - not_null
+
+          - name: is_offday
+            description: "休日フラグ"
+            tests:
+              - not_null
+
+          - name: holiday_name
+            description: "祝日名"
+
+          - name: is_holiday
+            description: "祝日フラグ"
+            tests:
+              - not_null
+
+          - name: weekday_holiday_with_holiday
+            description: "平日/休日（祝日加味）"
+            tests:
+              - not_null
+
+          - name: date_type
+            description: "日付属性"
+            tests:
+              - not_null
+
+          - name: date_flag
+            description: "日付フラグ"
+            tests:
+              - not_null
+
       - name: raw_date_master_2025_2026
         description: "日付マスタのrawモデル"
         columns:
