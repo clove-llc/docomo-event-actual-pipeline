@@ -211,6 +211,28 @@ FK_RULES = {
 
 ENUM_MAX = 12  # distinct がこの数以下のカラムは、サンプル値に全列挙する
 
+# レイヤー別のシートタブ色（スキーマ名から判定）
+LAYER_COLORS = {
+    "raw": "ED7D31",   # オレンジ
+    "int": "00B0F0",   # 水色
+    "mart": "7030A0",  # 紫
+    "stg": "A6A6A6",   # グレー（参考）
+}
+
+
+def layer_of(schema):
+    """BigQueryスキーマ名からレイヤー種別を判定する。"""
+    s = (schema or "").lower()
+    if s.endswith("_raw"):
+        return "raw"
+    if s.endswith("_intermediate"):
+        return "int"
+    if s.endswith("_mart"):
+        return "mart"
+    if s.endswith("_staging"):
+        return "stg"
+    return ""
+
 
 def profile_table(client, project, schema, table, cols):
     """BigQueryへ読み取り(SELECT)のみで、各カラムのNULL/一意性/カーディナリティを実測する。"""
@@ -565,11 +587,12 @@ def autofit_rows(ws):
             ws.row_dimensions[row_idx].height = max(best, current, 15.0)
 
 
-def rebuild_table_list(ws, entries):
+def rebuild_table_list(ws, entries, link_font=None):
     """「テーブル一覧」シートを全テーブルで再構築する。
 
-    entries: [(物理テーブル名, 論理名, 用途・概要, レイヤー), ...]
+    entries: [(物理テーブル名, 論理名, 用途・概要, レイヤー, シート名), ...]
     既存のヘッダー行とデータ行スタイルを流用し、行を過不足なく書き直す。
+    「リンク」列があれば、各定義シートへ遷移する内部ハイパーリンク（表示文字「テーブル定義書」）を入れる。
     """
     header_row = None
     for row in ws.iter_rows():
@@ -613,7 +636,9 @@ def rebuild_table_list(ws, entries):
     elif n < existing:
         ws.delete_rows(header_row + 1 + n, amount=existing - n)
 
-    for i, (phys, logical, summary, _layer) in enumerate(entries, start=1):
+    link_col = hmap.get("リンク")
+    for i, entry in enumerate(entries, start=1):
+        phys, logical, summary, _layer, sheet = (list(entry) + [None] * 5)[:5]
         r = header_row + i
         variant = styles["odd" if i % 2 == 1 else "even"]
         for c in range(1, max_col + 1):
@@ -624,6 +649,13 @@ def rebuild_table_list(ws, entries):
                 ws.cell(row=r, column=c, value=vals[header])
         if no_col not in hmap.values():
             ws.cell(row=r, column=no_col, value=i)
+        # リンク列: 各定義シートへ遷移する内部ハイパーリンク
+        if link_col and sheet:
+            cell = ws.cell(row=r, column=link_col, value="テーブル定義書")
+            safe = sheet.replace("'", "''")
+            cell.hyperlink = f"#'{safe}'!A1"
+            if link_font is not None:
+                cell.font = copy(link_font)
 
 
 def sheet_name_for(table_name, used):
@@ -692,6 +724,7 @@ def main():
 
     used_names = {ws.title for ws in wb.worksheets}
     created = []
+    sheet_of = {}   # table_name -> シート名
     for table in tables:
         ws = wb.copy_worksheet(template_ws)
         # copy_worksheet が引き継がない設定を補完
@@ -699,6 +732,12 @@ def main():
         ws.freeze_panes = template_ws.freeze_panes
         new_name = sheet_name_for(table["name"], used_names)
         ws.title = new_name
+        sheet_of[table["name"]] = new_name
+        # レイヤー別のタブ色（スキーマ名から判定）
+        schema = catalog.get(table["name"], {}).get("schema", "")
+        color = LAYER_COLORS.get(layer_of(schema))
+        if color:
+            ws.sheet_properties.tabColor = color
         fill_sheet(ws, table, catalog.get(table["name"], {}), info,
                    profile=profiles.get(table["name"]))
         created.append(ws)
@@ -715,11 +754,14 @@ def main():
         order += [template_ws]
     wb._sheets = order  # noqa: SLF001
 
-    # テーブル一覧を全テーブル（raw + モデル）で再構築
+    # テーブル一覧を全テーブル（raw + モデル）で再構築（リンク列付き）
     if "テーブル一覧" in wb.sheetnames and not args.table:
+        from openpyxl.styles import Font as _Font
+        link_font = _Font(name="Yu Gothic", size=11, color="0563C1", underline="single")
         entries = [(t["name"], LOGICAL_NAMES.get(t["name"], ""), t["description"],
-                    layers.get(t["name"], "")) for t in tables]
-        rebuild_table_list(wb["テーブル一覧"], entries)
+                    layers.get(t["name"], ""), sheet_of.get(t["name"]))
+                   for t in tables]
+        rebuild_table_list(wb["テーブル一覧"], entries, link_font=link_font)
 
     # 文字が隠れないよう全シートの行高を自動調整
     for ws in wb.worksheets:
