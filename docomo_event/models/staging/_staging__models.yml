@@ -372,6 +372,65 @@ models:
         tests:
           - not_null
 
+  - name: stg_facility_name_mappings
+    description: "施設名マッピングのstagingモデル。施設名の表記ゆれを統一するためのマッピング情報を保持する。"
+    columns:
+      - name: original_name
+        description: "表記ゆれしている施設名"
+        tests:
+          - not_null
+
+      - name: mapped_name
+        description: "表記ゆれ対応後の施設名"
+        tests:
+          - not_null
+
+  - name: stg_facility_actuals
+    description: "施設別・日付別実績のstagingモデル"
+    columns:
+      - name: source_sheet_name
+        description: "元データ（スプレッドシート等）のシート名"
+        tests:
+          - not_null
+
+      - name: regional_office_name
+        description: "地方事務所・地域オフィス名"
+
+      - name: branch_office_name
+        description: "支店・支部名"
+
+      - name: facility_name
+        description: "施設名"
+        tests:
+          - not_null
+
+      - name: floor_label
+        description: "階数・フロア表記"
+
+      - name: space_name
+        description: "スペース・部屋名"
+
+      - name: area_raw
+        description: "面積・地域の生データ"
+
+      - name: helper_company_name
+        description: "協力会社・ヘルパー会社名"
+
+      - name: staff_count_raw
+        description: "スタッフ数の生データ"
+
+      - name: start_date
+        description: "開始日"
+
+      - name: end_date
+        description: "終了日"
+
+      - name: event_date
+        description: "イベント日・発生日"
+
+      - name: actual_value
+        description: "実績値（契約数など）"
+
   - name: stg_venue_performance
     description: "会場別・日別実績のstagingモデル"
     columns:

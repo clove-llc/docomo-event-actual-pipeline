@@ -12,10 +12,10 @@ SELECT DISTINCT
   d_m.weekday_holiday_with_holiday,
   d_m.date_type,
   d_m.date_flag,
-  v_p.daily_result AS actual
+  f_a.actual_value AS actual
 FROM
   {{ ref("stg_facility_master") }} AS f_m
 INNER JOIN
-  {{ ref("stg_venue_performance") }} AS v_p
-  ON f_m.facility_name = v_p.facility_name
-LEFT JOIN {{ ref("stg_date_master") }} AS d_m ON v_p.date = d_m.date
+  {{ ref("int_facility_actuals") }} AS f_a
+  ON f_m.facility_name = f_a.facility_name
+LEFT JOIN {{ ref("stg_date_master") }} AS d_m ON f_a.event_date = d_m.date
