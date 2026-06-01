@@ -219,6 +219,7 @@ def profile_table(client, project, schema, table, cols):
     for col, _ in cols:
         sel.append(f"COUNTIF(`{col}` IS NULL) AS `n__{col}`")
         sel.append(f"COUNT(DISTINCT `{col}`) AS `d__{col}`")
+        sel.append(f"CAST(MIN(`{col}`) AS STRING) AS `s__{col}`")  # 非NULLの一例
     row = list(client.query(f"SELECT {', '.join(sel)} FROM {fq}").result())[0]
     total = row["_total"]
     prof = {"_total": total}
@@ -233,6 +234,7 @@ def profile_table(client, project, schema, table, cols):
             "uk": dist == nonnull and nonnull > 0,
             "pk": nulls == 0 and dist == total and total > 0,
             "values": None,
+            "sample": row[f"s__{col}"],  # 代表値（全カラムに必ず1つ）
         }
         if 0 < dist <= ENUM_MAX:
             low.append(col)
@@ -448,7 +450,7 @@ def fill_sheet(ws, table, cat, info, profile=None):
         unique = col["unique"] or p.get("uk", False)
         is_pk = col["pk"] or p.get("pk", False) or (cname in composite_pk)
         fk = col["fk"] or fk_map.get(cname, "")
-        # サンプル値: yml accepted_values 優先、無ければ実測の低カーディナリティ値
+        # サンプル値: yml accepted_values 優先 → 低カーディナリティは全列挙 → それ以外は代表値1つ
         if col["accepted"]:
             sample = " / ".join(map(str, col["accepted"]))
         elif p.get("values"):
@@ -456,6 +458,8 @@ def fill_sheet(ws, table, cat, info, profile=None):
             sample = " / ".join(map(str, vals[:ENUM_MAX]))
             if len(vals) > ENUM_MAX:
                 sample += " …"
+        elif p.get("sample") is not None:
+            sample = str(p["sample"])  # 高カーディナリティ列も必ず1例を入れる
         else:
             sample = ""
 
