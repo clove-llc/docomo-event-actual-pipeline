@@ -652,6 +652,12 @@ def rebuild_table_list(ws, entries, link_font=None):
         # リンク列: 各定義シートへ遷移する内部ハイパーリンク
         if link_col and sheet:
             cell = ws.cell(row=r, column=link_col, value="テーブル定義書")
+            # 他列と同じ罫線・ストライプを適用（テンプレ5列目は無地のため隣列の書式を流用）
+            ref = next((variant[c] for c in (link_col - 1, 2, 1) if variant.get(c)), None)
+            if ref:
+                cell.fill = copy(ref["fill"])
+                cell.border = copy(ref["border"])
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
             safe = sheet.replace("'", "''")
             cell.hyperlink = f"#'{safe}'!A1"
             if link_font is not None:
