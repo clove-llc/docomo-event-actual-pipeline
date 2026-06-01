@@ -560,6 +560,15 @@ def autofit_rows(ws):
             if cell.value in (None, ""):
                 continue
             r, c = cell.row, cell.column
+            # A1（左上の見出し）は折り返さず1行表示（枠はみ出し可）。高さ計算からも除外。
+            if r == 1 and c == 1:
+                al = cell.alignment
+                if al.wrap_text:
+                    cell.alignment = Alignment(
+                        horizontal=al.horizontal, vertical=al.vertical,
+                        wrap_text=False, text_rotation=al.text_rotation, indent=al.indent,
+                    )
+                continue
             m = merge_at(r, c)
             if m and (r != m.min_row or c != m.min_col):
                 continue  # 結合セルの先頭以外はスキップ
