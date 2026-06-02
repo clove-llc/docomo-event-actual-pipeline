@@ -45,6 +45,14 @@ def layer_of(schema):
     return ""
 
 
+# レイヤー順（raw → stg → int → mart）でテーブルを並べる
+_LAYER_RANK = {"raw": 0, "stg": 1, "int": 2, "mart": 3}
+
+
+def sort_key(r):
+    return (_LAYER_RANK.get(layer_of(r["dataset"]), 9), r["table"])
+
+
 def _c(ws, r, col, v=None, font=F_B, fill=None, al=LT, border=True):
     x = ws.cell(row=r, column=col, value=v)
     x.font = font
@@ -212,7 +220,7 @@ def build_list(wb, results, sheet_of):
     for i, (h, w) in enumerate(heads, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
         _c(ws, 3, i, h, font=F_H, fill=FILL_H, al=CC)
-    for i, r in enumerate(sorted(results, key=lambda x: (x["dataset"], x["table"])), 1):
+    for i, r in enumerate(sorted(results, key=sort_key), 1):
         rr = 3 + i
         st = FILL_STRIPE if i % 2 == 0 else None
         rows = f"{r['rows']:,}" if isinstance(r["rows"], int) else "?"
@@ -418,13 +426,13 @@ def build_workbook(results, cross, scope, project, gen_date, out_path,
 
     used = {"表紙", "テーブル一覧"}
     sheet_of = {}
-    for r in sorted(results, key=lambda x: (x["dataset"], x["table"])):
+    for r in sorted(results, key=sort_key):
         sheet_of[(r["dataset"], r["table"])] = sheet_name_for(r["table"], used)
 
     build_list(wb, results, sheet_of)
 
     # クロス行をテーブル単位に振り分け（行テキストに当該テーブル名を含むものを関連とみなす）
-    for r in sorted(results, key=lambda x: (x["dataset"], x["table"])):
+    for r in sorted(results, key=sort_key):
         rel = [ln for ln in cross if r["table"] in ln]
         build_detail(wb, r, sheet_of[(r["dataset"], r["table"])], rel)
 
