@@ -176,27 +176,77 @@ def phase2_columns(run, t, cols):
 
 
 def phase3_segments(run, t, total, cols_out, low_card, axes_limit=4):
-    """低カーディナリティ列を軸に、件数・割合と他列NULL率の差を比較。"""
+    """低カーディナリティ列を軸に、件数・割合に加え、NULL率・一意率・数値平均が
+    区分間で大きく異なる列を検出し、区分別の内訳を保持する。"""
     axes = [c for c in low_card if 2 <= cols_out[c]["dist"] <= 12][:axes_limit]
-    other_cols = [c for c in cols_out]
+    all_cols = list(cols_out.keys())
     results = []
     for axis in axes:
-        # セグメント件数 + 各列のNULL率
+        targets = [c for c in all_cols if c != axis]
+        uniq_targets = [c for c in targets
+                        if cols_out[c]["dist"] > 1 and cols_out[c]["unique_pct"] < 90
+                        and cols_out[c]["null_pct"] < 100]
+        num_targets = [c for c in targets
+                       if cols_out[c]["num"] is not None and is_measure_col(c)
+                       and cols_out[c]["null_pct"] < 100]
         sel = [f"CAST(`{axis}` AS STRING) AS seg", "COUNT(*) AS cnt"]
-        targets = [c for c in other_cols if c != axis]
         for c in targets:
-            sel.append(f"ROUND(COUNTIF(`{c}` IS NULL)/COUNT(*)*100,1) AS `np_{c}`")
+            sel.append(f"COUNTIF(`{c}` IS NULL) AS `np_{c}`")
+        for c in uniq_targets:
+            sel.append(f"COUNT(DISTINCT `{c}`) AS `nd_{c}`")
+        for c in num_targets:
+            sel.append(f"AVG(`{c}`) AS `av_{c}`")
         rows = run(f"SELECT {', '.join(sel)} FROM {t} GROUP BY seg ORDER BY cnt DESC")
-        segs = [{"seg": (r["seg"] if r["seg"] is not None else "(NULL)"),
-                 "cnt": r["cnt"], "pct": r["cnt"] / total * 100} for r in rows]
-        # NULL率差が20pt超の列を抽出
+
+        def seg_name(r):
+            return r["seg"] if r["seg"] is not None else "(NULL)"
+
+        segs = [{"seg": seg_name(r), "cnt": r["cnt"], "pct": r["cnt"] / total * 100} for r in rows]
         flagged = []
+        # NULL率差（20pt超）
         for c in targets:
-            vals = [r[f"np_{c}"] for r in rows if r[f"np_{c}"] is not None]
-            if vals and (max(vals) - min(vals)) >= 20:
-                flagged.append((c, min(vals), max(vals)))
-        results.append({"axis": axis, "segs": segs, "flagged": flagged})
+            bs = [(seg_name(r), (r[f"np_{c}"] / r["cnt"] * 100 if r["cnt"] else 0)) for r in rows]
+            vals = [p for _, p in bs]
+            if vals and max(vals) - min(vals) >= 20:
+                flagged.append({"col": c, "kind": "null", "min": min(vals), "max": max(vals),
+                                "by_seg": [(s, round(p)) for s, p in bs]})
+        # 一意率差（50pt超）
+        for c in uniq_targets:
+            bs = [(seg_name(r), (r[f"nd_{c}"] / r["cnt"] * 100 if r["cnt"] else 0)) for r in rows]
+            vals = [p for _, p in bs]
+            if vals and max(vals) - min(vals) >= 50:
+                flagged.append({"col": c, "kind": "unique", "min": min(vals), "max": max(vals),
+                                "by_seg": [(s, round(p)) for s, p in bs]})
+        # 数値平均差（最大が最小の2倍以上）
+        for c in num_targets:
+            bs = [(seg_name(r), r[f"av_{c}"]) for r in rows]
+            nn = [a for _, a in bs if a is not None]
+            if len(nn) >= 2 and min(nn) > 0 and max(nn) >= 2 * min(nn):
+                flagged.append({"col": c, "kind": "avg", "min": min(nn), "max": max(nn),
+                                "by_seg": bs})
+        results.append({"axis": axis, "segs": segs, "flagged": flagged[:12]})
     return results
+
+
+def recent_daily(run, t, cols, n=7):
+    """日付グレイン列があれば、直近n日のレコード数を返す。"""
+    names = [c for c, _ in cols]
+    grain = None
+    for pref in ("date", "event_date"):
+        if pref in names:
+            grain = pref
+            break
+    if not grain:
+        for c, ty in cols:
+            if ty in DATE_TYPES and is_grain_date_col(c):
+                grain = c
+                break
+    if not grain:
+        return None
+    rows = run(f"""SELECT CAST(`{grain}` AS STRING) AS d, COUNT(*) AS n FROM {t}
+                   WHERE `{grain}` IS NOT NULL GROUP BY d ORDER BY d DESC LIMIT {n}""")
+    days = [(r["d"], r["n"]) for r in rows][::-1]  # 古い→新しい順に並べ替え
+    return {"col": grain, "days": days} if days else None
 
 
 def phase4_quality(run, t, total, cols, cols_out):
@@ -212,15 +262,19 @@ def phase4_quality(run, t, total, cols, cols_out):
     except Exception:  # noqa: BLE001
         q["dup_rows"] = None
 
-    # エラー値・センチネル（文字列列）
+    # エラー値・センチネル（文字列列）。どの値が混入したかの内訳も取得する。
     q["sentinels"] = {}
     if str_cols and total:
-        lst = ",".join("'" + s.replace("'", "''") + "'" for s in SENTINELS)
-        sel = [f"COUNTIF(UPPER(TRIM(`{c}`)) IN ({lst.upper()})) AS `s_{c}`" for c in str_cols]
+        lst = ",".join("'" + s.replace("'", "''").upper() + "'" for s in SENTINELS)
+        sel = [f"COUNTIF(UPPER(TRIM(`{c}`)) IN ({lst})) AS `s_{c}`" for c in str_cols]
         r = run(f"SELECT {', '.join(sel)} FROM {t}")[0]
         for c in str_cols:
             if r[f"s_{c}"]:
-                q["sentinels"][c] = r[f"s_{c}"]
+                # 実際に入っていたエラー値とその件数（上位）
+                br = run(f"""SELECT TRIM(`{c}`) AS v, COUNT(*) AS n FROM {t}
+                            WHERE UPPER(TRIM(`{c}`)) IN ({lst})
+                            GROUP BY v ORDER BY n DESC LIMIT 10""")
+                q["sentinels"][c] = [(rw["v"], rw["n"]) for rw in br]
 
     # 数値: 外れ値(IQR) と 負値
     q["outliers"] = {}
@@ -248,6 +302,18 @@ def phase4_quality(run, t, total, cols, cols_out):
                         q["outliers"][c] = r[f"o_{c}"]
                 if r.get(f"g_{c}"):
                     q["negatives"][c] = r[f"g_{c}"]
+        # 外れ値の具体例（中央値から最も離れた値を数件）
+        q["outlier_examples"] = {}
+        for c in q["outliers"]:
+            lo, hi = bounds[c]
+            med = (cols_out[c]["num"] or {}).get("median") or 0
+            try:
+                ex = run(f"""SELECT DISTINCT `{c}` AS v FROM {t}
+                            WHERE `{c}` < {lo} OR `{c}` > {hi}
+                            ORDER BY ABS(`{c}` - {med}) DESC LIMIT 3""")
+                q["outlier_examples"][c] = [rw["v"] for rw in ex]
+            except Exception:  # noqa: BLE001
+                q["outlier_examples"][c] = []
 
     # 日付: 連続性（欠損日）と start>end 逆転
     q["date_gaps"] = {}
@@ -261,7 +327,15 @@ def phase4_quality(run, t, total, cols, cols_out):
                             COUNT(DISTINCT DATE(`{c}`)) AS days FROM {t} WHERE `{c}` IS NOT NULL""")[0]
                 gap = (r["span"] or 0) - (r["days"] or 0)
                 if gap > 0:
-                    q["date_gaps"][c] = {"span": r["span"], "days": r["days"], "missing": gap}
+                    info = {"span": r["span"], "days": r["days"], "missing": gap}
+                    # 欠損している日付の具体例（先頭数件）
+                    ex = run(f"""SELECT CAST(d AS STRING) AS v FROM UNNEST(
+                                   GENERATE_DATE_ARRAY(DATE('{d['min'][:10]}'), DATE('{d['max'][:10]}'))) d
+                                 WHERE d NOT IN (
+                                   SELECT DISTINCT DATE(`{c}`) FROM {t} WHERE `{c}` IS NOT NULL)
+                                 ORDER BY d LIMIT 5""")
+                    info["examples"] = [rw["v"] for rw in ex]
+                    q["date_gaps"][c] = info
             except Exception:  # noqa: BLE001
                 pass
     names = {c for c, _ in cols}
@@ -325,8 +399,9 @@ def render(dataset, table, meta, total, cols_out, segments, quality):
             top = " / ".join(f"{x['seg']}: {num(x['cnt'])}({x['pct']:.0f}%)" for x in s["segs"][:8])
             L.append(f"- 軸 **{s['axis']}**: {top}")
             if s["flagged"]:
-                for c, lo, hi in s["flagged"]:
-                    L.append(f"  - ⚠️ `{c}` のNULL率がセグメント間で差大（{lo:.0f}%〜{hi:.0f}%）")
+                for fl in s["flagged"]:
+                    bs = ", ".join(f"{seg}:{p:.0f}%" for seg, p in fl["by_seg"])
+                    L.append(f"  - 列 `{fl['col']}` のNULL率が区分で差大（{fl['min']:.0f}%〜{fl['max']:.0f}%）→ {bs}")
         L.append("")
 
     # Phase4
@@ -335,7 +410,8 @@ def render(dataset, table, meta, total, cols_out, segments, quality):
     if quality.get("dup_rows"):
         findings.append(f"完全重複行: **{num(quality['dup_rows'])}件**")
     if quality.get("sentinels"):
-        s = ", ".join(f"`{c}`={num(n)}" for c, n in quality["sentinels"].items())
+        s = ", ".join(f"`{c}`(" + " / ".join(f"{v}={num(n)}" for v, n in items) + ")"
+                      for c, items in quality["sentinels"].items())
         findings.append(f"エラー値/センチネル混入: {s}")
     if quality.get("outliers"):
         s = ", ".join(f"`{c}`={num(n)}" for c, n in quality["outliers"].items())
@@ -370,7 +446,7 @@ def profile(project, dataset, table):
     total, cols_out, low_card = phase2_columns(run, t, cols)
     segments = phase3_segments(run, t, total, cols_out, low_card) if total else []
     quality = phase4_quality(run, t, total, cols, cols_out) if total else {}
-    md = render(dataset, table, meta, total, cols_out, segments, quality)
+    recent = recent_daily(run, t, cols) if total else None
     # サマリー用の主要所見
     findings = []
     full_null = [c for c, i in cols_out.items() if i["null_pct"] == 100]
@@ -384,10 +460,16 @@ def profile(project, dataset, table):
         findings.append("日付逆転あり")
     if quality.get("date_gaps"):
         findings.append(f"日付欠損 {len(quality['date_gaps'])}列")
-    return {"md": md, "dataset": dataset, "table": table, "rows": total,
-            "modified": meta.get("modified"), "type": meta.get("typ"),
-            "findings": findings, "cols": {c: (i["type"], i["unique_pct"], i["null_pct"])
-                                           for c, i in cols_out.items()}}
+    return {
+        "dataset": dataset, "table": table, "rows": total,
+        "meta": meta, "cols_out": cols_out, "segments": segments, "quality": quality,
+        "recent_daily": recent,
+        "modified": meta.get("modified"), "type": meta.get("typ"),
+        "findings": findings,
+        # テーブル間整合用（型/一意率/NULL率の簡易ビュー）
+        "cols": {c: (i["type"], i["unique_pct"], i["null_pct"]) for c, i in cols_out.items()},
+        # 任意: md も欲しい場合に備えて遅延生成用の素材は上記に含む
+    }
 
 
 def main():
@@ -397,7 +479,9 @@ def main():
     ap.add_argument("--table", required=True)
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
-    md = profile(args.project, args.dataset, args.table)["md"]
+    res = profile(args.project, args.dataset, args.table)
+    md = render(res["dataset"], res["table"], res["meta"], res["rows"],
+                res["cols_out"], res["segments"], res["quality"])
     if args.out:
         os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
         with open(args.out, "w", encoding="utf-8") as f:

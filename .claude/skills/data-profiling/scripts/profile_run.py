@@ -13,16 +13,31 @@
 import argparse
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone, timedelta
 
 from google.cloud import bigquery
 
 import profile_table as pt
+import report_xlsx
 
 DEFAULT_DATASETS = [
     "docomo_event_raw",
     "docomo_event_intermediate",
     "docomo_event_mart",
 ]
+
+# 論理テーブル名（main.py の run_pipeline(name=...) 由来。モデルは空）
+LOGICAL_NAMES = {
+    "raw_facility_master": "施設マスタ",
+    "raw_facility_daily_deviation_zscore": "施設・日付フラグ別 偏差値Zスコアマスタ",
+    "raw_facility_foot_traffic_avg_and_decile_by_flag": "施設・日付フラグ別 人流平均・デシルランクマスタ",
+    "raw_date_master": "日付マスタ",
+    "raw_date_master_2025_2026": "日付マスタ（2025-2026）",
+    "raw_date_master_2026_2027": "日付マスタ（2026-2027）",
+    "raw_facility_name_mappings": "施設名 表記ゆれマッピング",
+    "raw_facility_actuals": "実績データ（施設別・縦持ち）",
+    "raw_venue_performance": "会場別実績データ",
+}
 
 # テーブル間整合で参照整合を見る「キーらしい」列の判定
 def is_keyish(col):
@@ -68,38 +83,11 @@ def cross_table_checks(project, results):
                     WHERE c.`{col}` IS NOT NULL AND NOT EXISTS (
                       SELECT 1 FROM `{project}.{pds}.{ptb}` p WHERE p.`{col}` = c.`{col}`)
                 """)[0]["n"]
-                mark = "✅整合" if orphan == 0 else f"⚠️孤児 {orphan:,}件"
+                mark = "○整合（孤児ゼロ）" if orphan == 0 else f"▲孤児 {orphan:,}件"
                 lines.append(f"- `{ds}.{tb}.{col}` → `{pds}.{ptb}.{col}` : {mark}")
             except Exception as e:  # noqa: BLE001
                 lines.append(f"- `{ds}.{tb}.{col}` → `{pds}.{ptb}.{col}` : 検証失敗 ({str(e)[:60]})")
     return lines
-
-
-def build_report(results, cross_lines, scope):
-    L = ["# データプロファイリング レポート", ""]
-    L.append(f"対象: {scope}")
-    L.append("※ BigQueryは読み取り(SELECT)のみで調査（書き込みなし）。")
-    L.append("")
-    # サマリー
-    L.append("## サマリー")
-    L.append("| テーブル | 種別 | 行数 | 最終更新 | 主な所見 |")
-    L.append("|---|---|--:|---|---|")
-    for r in sorted(results, key=lambda x: (x["dataset"], x["table"])):
-        f = " / ".join(r["findings"]) if r["findings"] else "—"
-        rows = f"{r['rows']:,}" if isinstance(r["rows"], int) else "?"
-        L.append(f"| {r['dataset']}.{r['table']} | {r.get('type','?')} | {rows} | "
-                 f"{r.get('modified','?')} | {f} |")
-    L.append("")
-    # テーブル間整合
-    L.append("## テーブル間の参照整合（共有キー）")
-    L.extend(cross_lines if cross_lines else ["- 対象となる共有キーは検出されず。"])
-    L.append("")
-    # 各テーブル詳細
-    L.append("## テーブル別 詳細")
-    L.append("")
-    for r in sorted(results, key=lambda x: (x["dataset"], x["table"])):
-        L.append(r["md"])
-    return "\n".join(L)
 
 
 def main():
@@ -108,9 +96,8 @@ def main():
     ap.add_argument("--datasets", nargs="*", default=DEFAULT_DATASETS)
     ap.add_argument("--tables", nargs="*", default=None,
                     help="dataset.table 形式で対象を明示（省略時はdatasets内の全テーブル）")
-    ap.add_argument("--out", default="docs/データプロファイリングレポート.md")
-    ap.add_argument("--intermediate-dir", default=None,
-                    help="指定すると per-table の中間mdも出力")
+    ap.add_argument("--out", default="docs/データプロファイリングレポート.xlsx")
+    ap.add_argument("--gen-date", default=None, help="表紙の生成日（既定: 当日JST）")
     ap.add_argument("--workers", type=int, default=8)
     args = ap.parse_args()
 
@@ -134,13 +121,7 @@ def main():
         for fut in as_completed(futs):
             ds, tb = futs[fut]
             try:
-                res = fut.result()
-                results.append(res)
-                if args.intermediate_dir:
-                    os.makedirs(args.intermediate_dir, exist_ok=True)
-                    with open(os.path.join(args.intermediate_dir, f"{ds}.{tb}.md"),
-                              "w", encoding="utf-8") as f:
-                        f.write(res["md"])
+                results.append(fut.result())
                 print(f"  ✓ {ds}.{tb}")
             except Exception as e:  # noqa: BLE001
                 print(f"  ✗ {ds}.{tb}: {str(e)[:100]}")
@@ -149,10 +130,9 @@ def main():
     cross = cross_table_checks(args.project, results)
 
     scope = ", ".join(args.datasets) if not args.tables else f"{len(targets)}テーブル"
-    report = build_report(results, cross, scope)
-    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
-    with open(args.out, "w", encoding="utf-8") as f:
-        f.write(report)
+    gen_date = args.gen_date or datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+    report_xlsx.build_workbook(results, cross, scope, args.project, gen_date, args.out,
+                               logical_names=LOGICAL_NAMES)
     print(f"レポート生成: {args.out}（{len(results)}テーブル）")
 
 
