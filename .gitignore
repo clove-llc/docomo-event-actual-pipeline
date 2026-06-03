@@ -61,6 +61,7 @@ Thumbs.db
 .env.*
 
 cloud-run-sa.json
+
 # =========================
 # dbt profiles
 # =========================

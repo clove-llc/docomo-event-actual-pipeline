@@ -1,4 +1,4 @@
-SELECT DISTINCT
+SELECT DISTINCT -- フロア列（floor_label）をなくしたことで、重複が発生する可能性があるため、重複を排除する
   f_m.facility_code,
   f_m.facility_name,
   f_m.po_level,
