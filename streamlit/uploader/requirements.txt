@@ -1,0 +1,6 @@
+# ローカル開発用（pip）。SiS（Snowflake Anaconda チャネル）提供版にバージョン固定。
+# 共有ライブラリ（streamlit / pandas / openpyxl）は environment.yml と同一バージョン。
+streamlit==1.51.0
+pandas==2.3.3
+openpyxl==3.1.5
+snowflake-connector-python[pandas]==4.5.0
