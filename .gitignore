@@ -71,3 +71,16 @@ profiles.yml
 # Excel 一時ロックファイル
 # =========================
 ~$*.xlsx
+
+# =========================
+# Streamlit secrets
+# =========================
+streamlit/**/.streamlit/secrets.toml
+streamlit/uploader/data
+
+# =========================
+# Snowflake キーペア（秘密鍵は絶対にコミットしない）
+# =========================
+*.p8
+*.pem
+rsa_key*
