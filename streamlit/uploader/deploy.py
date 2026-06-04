@@ -21,8 +21,8 @@ from pathlib import Path
 HERE = Path(__file__).parent
 SECRETS = HERE / ".streamlit" / "secrets.toml"
 STAGE = "STREAMLIT_STAGE"
-UPLOAD_FILES = ["app.py", "sf_common.py", "environment.yml"]  # ステージ直下へ送るファイル
-PAGES_DIR = "pages"  # マルチページ（pages/*.py）はステージの pages/ 配下へ送る
+UPLOAD_FILES = ["app.py", "sf_common.py", "datasets.py", "environment.yml"]  # ステージ直下へ送る
+PKG_DIRS = ["loaders"]  # パッケージ（loaders/*.py）はステージの同名サブディレクトリへ送る
 PLACEHOLDERS = {"ORG-ACCOUNT", "USERNAME", "PASSWORD", "ROLE", "WAREHOUSE", "DATABASE", "SCHEMA", ""}
 
 
@@ -74,11 +74,18 @@ def main() -> int:
         print(f"▶ アップロード: {f} → {stage_path}")
         cur.execute(f"PUT 'file://{local}' '{stage_path}/' AUTO_COMPRESS=FALSE OVERWRITE=TRUE")
 
-    pages = sorted((HERE / PAGES_DIR).glob("*.py")) if (HERE / PAGES_DIR).is_dir() else []
-    for local in pages:
-        print(f"▶ アップロード: {PAGES_DIR}/{local.name} → {stage_path}/{PAGES_DIR}")
-        cur.execute(f"PUT 'file://{local.resolve()}' '{stage_path}/{PAGES_DIR}/' "
-                    f"AUTO_COMPRESS=FALSE OVERWRITE=TRUE")
+    for pkg in PKG_DIRS:
+        pkg_dir = HERE / pkg
+        if not pkg_dir.is_dir():
+            continue
+        for local in sorted(pkg_dir.glob("*.py")):
+            print(f"▶ アップロード: {pkg}/{local.name} → {stage_path}/{pkg}")
+            cur.execute(f"PUT 'file://{local.resolve()}' '{stage_path}/{pkg}/' "
+                        f"AUTO_COMPRESS=FALSE OVERWRITE=TRUE")
+
+    # ディレクトリテーブルを更新（Snowsight のステージ表示を最新化）
+    print(f"▶ ステージ更新: ALTER STAGE {fq_stage} REFRESH")
+    cur.execute(f"ALTER STAGE {fq_stage} REFRESH")
 
     print(f"▶ STREAMLIT 作成/更新: {db}.{schema}.{app_name}")
     cur.execute(f"""

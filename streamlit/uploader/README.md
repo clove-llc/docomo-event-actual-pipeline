@@ -1,6 +1,17 @@
-# 実績データ アップローダ
+# Snowflake アップローダ
 
-`実績データ.xlsx` の月別シートを横持ちのまま Snowflake へロードする Streamlit アプリ。
+Excel を Snowflake へロードする Streamlit アプリ。上部のセレクタで対象を選ぶ:
+- **実績データ**: `実績データ.xlsx` の月別シートを横持ちのまま `raw_facility_actuals_<yyyymm>` へ。
+- **日付マスタ**: `日付マスタ.xlsx` の「日付マスタ」シート（英語物理名は2行目）を `RAW_DATE_MASTER` へ。
+- **季節指数マスタ**: `季節指数マスタ.xlsx` の「01_日別施設別（SENSE）」シート（固定）を横持ちのまま
+  `RAW_FACILITY_SEASONAL_DAILY` へ（施設コード/施設名/年間平均値＋365日の日次指数）。
+- **施設マスタ**: `施設マスタ.xlsx` の「facility_master」シート（固定・英語物理名は2行目）を**全39列raw**で
+  `RAW_FACILITY_MASTER` へ（facility_code=NUMBER／`*_bool`=BOOLEAN／その他VARCHAR原文・コードの先頭ゼロ保持）。
+- **施設名マッピングマスタ**: `施設名マッピングマスタ.xlsx` の同名シート（固定・英語物理名は2行目）を
+  `RAW_FACILITY_NAME_MAPPINGS` へ（`original_name` / `mapped_name` の2列・VARCHAR）。
+- **人流・デシルマスタ**: `人流・デシルマスタ.xlsx` の「01_日別施設別（SENSE）」シート（固定・ヘッダーは1行目）を
+  横持ちのまま `RAW_FACILITY_FOOT_TRAFFIC_DAILY` へ（施設コード/施設名/年間平均値＋365日の日次値）。
+
 ローカルで開発し、`deploy.sh` で Streamlit in Snowflake (SiS) へ反映する。
 
 ---
@@ -47,10 +58,17 @@ streamlit run app.py          # http://localhost:8501
 - ヘッダーは4行目固定で自動認識（手動調整不要）。
 - 固定13列は日本語名そのまま、日付列はシートごとに**動的に取得**（列名 `YYYY-MM-DD`）。
 - アップロードのたびに `CREATE OR REPLACE TABLE raw_facility_actuals_<yyyymm>` で作り直す。
-- 型: `No`→NUMBER ／ `開始日`・`終了日`→DATE ／ 日付列→NUMBER(38,0) ／
-  `面積`・`スタッフ数`・`実施日数` ほか→VARCHAR（表記が混在するため raw は原文保持）。
+- 型: `No`→NUMBER ／ `開始日`・`終了日`→DATE ／ **日付列・`面積`・`スタッフ数`・`実施日数` ほか→VARCHAR**。
+  raw は**原文のまま保持**（`＠`/`中止`/`なし`/`不明`/空/カンマ等）。クレンジング（縦持ち化時の正規化）は
+  `sql/unpivot_raw_facility_actuals.sql`（および `sql/dbt/`）の縦持ちSQL側で実施する。
 - 監査列 `latest_updated_at`（TIMESTAMP_NTZ, `DEFAULT CURRENT_TIMESTAMP()`）を付与し、
   最後にロード（CREATE OR REPLACE）した時刻を記録する。
+
+### 縦持ち化（横持ち→raw_facility_actuals）
+`sql/unpivot_raw_facility_actuals.sql` … 単月の縦持ちSQL（仕様準拠のクレンジング）。
+`sql/dbt/` … dbtでの実装（for で全月を unpivot＋UNION ALL）。
+クレンジング規則: 空→行削除 / TRIM / `＠`・`@`・`中止`・`確認中`→NULL（行は残す） / `なし`→0 /
+カンマ除去のうえ Int64 / `不明`等その他→行削除。
 
 ---
 
