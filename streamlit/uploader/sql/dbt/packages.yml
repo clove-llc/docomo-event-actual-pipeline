@@ -1,0 +1,5 @@
+# RAW_FACILITY_ACTUALS モデルが使う dbt_utils（get_relations_by_pattern）。
+# プロジェクトに組み込む際は dbt_packages へ反映: dbt deps
+packages:
+  - package: dbt-labs/dbt_utils
+    version: [">=1.0.0", "<2.0.0"]
