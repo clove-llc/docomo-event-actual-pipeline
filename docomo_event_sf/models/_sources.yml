@@ -5,8 +5,8 @@ version: 2
 sources:
   - name: raw
     database: "{{ target.database }}"
-    schema: "{{ target.schema }}"
-    description: "Excel アップローダがロードした生データ（RAW_*）"
+    schema: RAW
+    description: "Excel アップローダがロードした生データ（HARATO.RAW.RAW_*）"
     tables:
       - name: RAW_FACILITY_SEASONAL_DAILY
         description: "季節指数（SENSE）日次・横持ち"

@@ -12,13 +12,18 @@
 
 {{ config(materialized='table') }}
 
-{%- set relations = dbt_utils.get_relations_by_pattern(
-      schema_pattern=target.schema,
-      table_pattern='RAW_FACILITY_ACTUALS_2%'
-) -%}
-
-{%- if relations | length == 0 -%}
-  {{ exceptions.raise_compiler_error("RAW_FACILITY_ACTUALS_<yyyymm> テーブルが見つかりません: " ~ target.schema) }}
+{%- set raw_schema = var('raw_schema', 'RAW') -%}
+{#- get_relations_by_pattern は introspection（DB接続）が要る。parse時（execute=false）は
+    空が返るため、execute=true（実行時）のみ検出・存在チェックする。 -#}
+{%- set relations = [] -%}
+{%- if execute -%}
+  {%- set relations = dbt_utils.get_relations_by_pattern(
+        schema_pattern=raw_schema,
+        table_pattern='RAW_FACILITY_ACTUALS_2%'
+  ) -%}
+  {%- if relations | length == 0 -%}
+    {{ exceptions.raise_compiler_error("RAW_FACILITY_ACTUALS_<yyyymm> テーブルが見つかりません: " ~ raw_schema) }}
+  {%- endif -%}
 {%- endif -%}
 
 {%- for rel in relations %}
