@@ -20,11 +20,11 @@ clean-targets:
 models:
   docomo_event_sf:
     staging:
-      +schema: stg
+      +schema: stg       # → HARATO.STG
       +materialized: view
     intermediate:
-      +schema: int       # 例: STREAMLIT_UPLODER_XLSX_INT に出力
+      +schema: int       # → HARATO.INT
       +materialized: table
     marts:
-      +schema: mart
+      +schema: mart      # → HARATO.MART
       +materialized: table

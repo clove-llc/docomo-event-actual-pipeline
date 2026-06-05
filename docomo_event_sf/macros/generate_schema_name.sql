@@ -1,11 +1,12 @@
 {#-
-  カスタムスキーマ指定時は target.schema_<suffix> に出力する（既存 docomo_event と同方針）。
-  例: target.schema=STREAMLIT_UPLODER_XLSX, +schema: int → STREAMLIT_UPLODER_XLSX_INT
+  raw/stg/int/mart の4層をスキーマ名そのままにマッピングする。
+  +schema 未指定 → target.schema。指定時 → その名前（大文字）をスキーマ名に。
+  例: +schema: stg → STG, +schema: int → INT, +schema: mart → MART
 -#}
 {% macro generate_schema_name(custom_schema_name, node) -%}
   {%- if custom_schema_name is none -%}
     {{ target.schema }}
   {%- else -%}
-    {{ target.schema }}_{{ custom_schema_name | trim }}
+    {{ custom_schema_name | trim | upper }}
   {%- endif -%}
 {%- endmacro %}

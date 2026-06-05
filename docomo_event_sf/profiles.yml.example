@@ -1,0 +1,19 @@
+# docomo_event_sf 用 dbt 接続プロファイルのテンプレート。
+# 使い方: このファイルを同じディレクトリに profiles.yml としてコピーし、各値を自分の環境に置き換える。
+#         profiles.yml は .gitignore 済み（実値・鍵パスを書いてよい）。
+# 認証はキーペア（snowflake_jwt）。private_key_path はパスワード無しの .p8 を指す。
+dbt_project:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "<ORG-ACCOUNT>"          # 例: ABCD-XY12345
+      user: "<YOUR_USER>"
+      role: "<YOUR_ROLE>"
+      database: "HARATO"
+      warehouse: "<YOUR_WAREHOUSE>"
+      schema: STG                        # +schema 未指定モデルのフォールバック（現状は全モデルが層別に上書き）
+      private_key_path: "/path/to/your_key.p8"
+      authenticator: snowflake_jwt
+      threads: 4
+      client_session_keep_alive: false

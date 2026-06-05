@@ -63,9 +63,12 @@ Thumbs.db
 cloud-run-sa.json
 
 # =========================
-# dbt profiles
+# dbt profiles / artifacts
 # =========================
 profiles.yml
+dbt_packages/
+target/
+.user.yml
 
 # =========================
 # Excel 一時ロックファイル
