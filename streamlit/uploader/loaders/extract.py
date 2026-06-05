@@ -32,13 +32,17 @@ def wide_extract(xls: pd.ExcelFile, sheet: str, header_row: int, first_col: int,
 
 
 def flat_extract(xls: pd.ExcelFile, sheet: str, header_row: int,
-                 key_col: str | None) -> pd.DataFrame:
-    """フラットな表を取り出す（header_row を列名として使用）。"""
-    df = pd.read_excel(xls, sheet_name=sheet, header=header_row, dtype=str, engine="openpyxl")
+                 key_col: str | None, rename: dict | None = None,
+                 usecols: str | None = None) -> pd.DataFrame:
+    """フラットな表を取り出す（header_row を列名として使用）。rename で物理列名へ変換。"""
+    df = pd.read_excel(xls, sheet_name=sheet, header=header_row, dtype=str,
+                       usecols=usecols, engine="openpyxl")
     keep = [c for c in df.columns
             if not str(c).startswith("Unnamed") and str(c).strip().lower() != "nan"]
     df = df.loc[:, keep]
     df.columns = [str(c).strip() for c in df.columns]
+    if rename:
+        df = df.rename(columns=rename)
     if key_col and key_col in df.columns:
         df = df[df[key_col].notna() & (df[key_col].astype(str).str.strip() != "")]
     return df.where(pd.notna(df), None).reset_index(drop=True)

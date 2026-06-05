@@ -1,0 +1,30 @@
+# Snowflake 移行用 dbt プロジェクト（BigQuery の docomo_event とは分離）。
+# RAW_* はアップローダ（streamlit/uploader）が STREAMLIT_UPLODER_XLSX にロードしたものを source として参照する。
+name: "docomo_event_sf"
+version: "1.0.0"
+
+# ~/.dbt/profiles.yml の Snowflake 接続（env_var ベース）
+profile: "dbt_project"
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  docomo_event_sf:
+    staging:
+      +schema: stg
+      +materialized: view
+    intermediate:
+      +schema: int       # 例: STREAMLIT_UPLODER_XLSX_INT に出力
+      +materialized: table
+    marts:
+      +schema: mart
+      +materialized: table
