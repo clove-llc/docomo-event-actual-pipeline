@@ -87,7 +87,7 @@ def render_dataset(ctx: LoadContext, spec: DatasetSpec) -> None:
             xls, sheet, spec.header_row, spec.first_col, spec.fixed_n, spec.key_col)
         columns = fixed + date_names
     else:
-        data = flat_extract(xls, sheet, spec.header_row, spec.key_col)
+        data = flat_extract(xls, sheet, spec.header_row, spec.key_col, spec.rename, spec.usecols)
         fixed, date_names, columns = [], [], list(data.columns)
 
     def type_for(col: str) -> str:

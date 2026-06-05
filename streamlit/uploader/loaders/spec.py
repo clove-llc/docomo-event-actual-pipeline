@@ -29,8 +29,10 @@ class DatasetSpec:
     sheet: str | None = None        # 固定シート名。None は月別選択（month_mode）
     header_row: int = 0             # 0始まりのヘッダー行
     first_col: int = 0              # 先頭から無視する列数（A列空など）
+    usecols: str | None = None      # flat: 読み込む列範囲（例 "B:C"）。None は全列
     fixed_n: int | None = None      # wide: 固定列数
     key_col: str | None = None      # この列が空の行は除外
+    rename: dict[str, str] = field(default_factory=dict)    # 元ヘッダー→物理列名（flat用）
     type_map: dict[str, str] = field(default_factory=dict)  # 列名→SQL型
     default_type: str = "VARCHAR"   # type_map 未掲載列の既定型
     date_col_type: str | None = None  # wide: 日付列の型

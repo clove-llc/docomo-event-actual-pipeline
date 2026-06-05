@@ -73,6 +73,29 @@ FOOT_TRAFFIC = DatasetSpec(
     caption="人流・デシルマスタの「01_日別施設別（SENSE）」を RAW_FACILITY_FOOT_TRAFFIC_DAILY へ",
 )
 
+KDDI_FOOT_TRAFFIC = DatasetSpec(
+    label="KDDI人流データ",
+    table="RAW_KDDI_FOOT_TRAFFIC",
+    layout="flat",
+    sheet="KDDI人流データ", header_row=0, key_col="facility_code",
+    rename={"No": "facility_code", "施設名": "facility_name", "全日|TTL": "foot_traffic_total"},
+    type_map={"facility_code": "NUMBER(38,0)", "foot_traffic_total": "NUMBER(38,0)"},
+    default_type="VARCHAR",
+    caption="人流・デシルマスタの「KDDI人流データ」シートを RAW_KDDI_FOOT_TRAFFIC へ（施設別の年間人流TTL）",
+)
+
+DATE_FLAG = DatasetSpec(
+    label="日付フラグマスタ",
+    table="RAW_DATE_FLAG",
+    layout="flat",
+    sheet="日付フラグマスタ", header_row=0, usecols="B:C", key_col="date",
+    rename={"日付": "date", "フラグ名": "date_flag"},
+    type_map={"date": "DATE"},
+    default_type="VARCHAR",
+    caption="人流・デシルマスタの「日付フラグマスタ」シート(B:C)を RAW_DATE_FLAG へ（日付→フラグ名）",
+)
+
 DATASETS = {s.label: s for s in [
     ACTUALS, DATE_MASTER, SEASONAL, FACILITY_MASTER, NAME_MAPPINGS, FOOT_TRAFFIC,
+    KDDI_FOOT_TRAFFIC, DATE_FLAG,
 ]}

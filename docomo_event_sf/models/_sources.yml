@@ -1,0 +1,26 @@
+version: 2
+
+# アップローダ（streamlit/uploader）が STREAMLIT_UPLODER_XLSX にロードした RAW_* を source 化。
+# schema は接続プロファイルの schema（=RAW の置き場）を指す想定。
+sources:
+  - name: raw
+    database: "{{ target.database }}"
+    schema: "{{ target.schema }}"
+    description: "Excel アップローダがロードした生データ（RAW_*）"
+    tables:
+      - name: RAW_FACILITY_SEASONAL_DAILY
+        description: "季節指数（SENSE）日次・横持ち"
+      - name: RAW_FACILITY_FOOT_TRAFFIC_DAILY
+        description: "人流（SENSE）日次・横持ち"
+      - name: RAW_KDDI_FOOT_TRAFFIC
+        description: "KDDI 施設別 年間人流TTL"
+      - name: RAW_DATE_FLAG
+        description: "日付→フラグ（GW/正月…）マスタ"
+      - name: RAW_DATE_MASTER
+        description: "日付マスタ"
+      - name: RAW_FACILITY_MASTER
+        description: "施設マスタ（全列raw）"
+      - name: RAW_FACILITY_NAME_MAPPINGS
+        description: "施設名 表記ゆれマッピング"
+      # 実績データは月別 RAW_FACILITY_ACTUALS_<yyyymm>（動的）。
+      # raw_facility_actuals モデルが dbt_utils.get_relations_by_pattern で自動検出するため source 定義は不要。
