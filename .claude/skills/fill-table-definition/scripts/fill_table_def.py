@@ -221,15 +221,15 @@ LAYER_COLORS = {
 
 
 def layer_of(schema):
-    """BigQueryスキーマ名からレイヤー種別を判定する。"""
+    """スキーマ名からレイヤー種別を判定する（BQ: *_raw / Snowflake: RAW 等の両対応）。"""
     s = (schema or "").lower()
-    if s.endswith("_raw"):
+    if s == "raw" or s.endswith("_raw"):
         return "raw"
-    if s.endswith("_intermediate"):
+    if s == "int" or s.endswith("_intermediate"):
         return "int"
-    if s.endswith("_mart"):
+    if s == "mart" or s.endswith("_mart"):
         return "mart"
-    if s.endswith("_staging"):
+    if s == "stg" or s.endswith("_staging"):
         return "stg"
     return ""
 
@@ -318,6 +318,159 @@ def build_profiles(project, catalog):
             out[table] = {"cols": prof, "composite_pk": composite, "fk": fk}
         except Exception as e:  # noqa: BLE001
             print(f"[警告] {table} のプロファイリングをスキップ: {e}")
+    return out
+
+
+# ===== Snowflake モード（BQ ではなく Snowflake を参照して型・プロファイルを取得）=====
+# 記述・テスト・論理名は BQ の yml を流用（SFは BQ SQL ベースで作成済み・列の意味は同一）。
+# DB/スキーマ・データ型・NULL/一意性・サンプル値は Snowflake から取得する（読み取り SELECT のみ）。
+SF_SCHEMA_OF_LAYER = {"raw": "RAW", "stg": "STG"}
+
+
+def sf_connect(secrets_path):
+    """secrets.toml（[snowflake]）からキーペア接続を張る。(conn, database) を返す。"""
+    import tomllib
+
+    from cryptography.hazmat.primitives import serialization
+    import snowflake.connector
+
+    with open(secrets_path, "rb") as f:
+        cfg = tomllib.load(f)["snowflake"]
+    with open(cfg["private_key_file"], "rb") as f:
+        pk = serialization.load_pem_private_key(f.read(), password=None)
+    pkb = pk.private_bytes(serialization.Encoding.DER,
+                           serialization.PrivateFormat.PKCS8,
+                           serialization.NoEncryption())
+    db = cfg.get("database", "HARATO")
+    conn = snowflake.connector.connect(
+        account=cfg["account"], user=cfg["user"], role=cfg.get("role"),
+        warehouse=cfg.get("warehouse"), database=db, private_key=pkb)
+    return conn, db
+
+
+def bq_to_sf_type(bqtype):
+    """BigQuery 型を Snowflake 表記に変換（SF未作成の int/mart を SF型風に揃えるため）。"""
+    t = (bqtype or "").upper().strip()
+    base = t.split("(")[0]
+    m = {
+        "STRING": "VARCHAR", "BYTES": "BINARY",
+        "INT64": "NUMBER(38,0)", "INTEGER": "NUMBER(38,0)",
+        "FLOAT64": "FLOAT", "FLOAT": "FLOAT",
+        "NUMERIC": "NUMBER(38,9)", "DECIMAL": "NUMBER(38,9)", "BIGNUMERIC": "NUMBER(38,9)",
+        "BOOL": "BOOLEAN", "BOOLEAN": "BOOLEAN",
+        "DATE": "DATE", "DATETIME": "TIMESTAMP_NTZ", "TIMESTAMP": "TIMESTAMP_NTZ", "TIME": "TIME",
+    }
+    return m.get(base, t)
+
+
+def _sf_type(data_type, prec, scale, length):
+    """INFORMATION_SCHEMA の型情報を Snowflake の表記に整える。"""
+    dt = (data_type or "").upper()
+    if dt in ("NUMBER", "DECIMAL", "NUMERIC"):
+        if prec is not None:
+            return f"NUMBER({prec},{scale or 0})"
+        return "NUMBER"
+    if dt in ("TEXT", "VARCHAR", "STRING", "CHAR", "CHARACTER"):
+        return "VARCHAR"
+    return dt or ""
+
+
+def load_sf_catalog(conn, db, want):
+    """want: {table_name(小文字): 'raw'|'stg'} → catalog[name]={database,schema,types{lower:type},_real{lower:actual}}。"""
+    cur = conn.cursor()
+    cat = {}
+    for name, layer in want.items():
+        schema = SF_SCHEMA_OF_LAYER[layer]
+        cur.execute(
+            f"select column_name, data_type, numeric_precision, numeric_scale, character_maximum_length "
+            f"from {db}.INFORMATION_SCHEMA.COLUMNS "
+            f"where table_schema = %s and table_name = %s order by ordinal_position",
+            (schema, name.upper()))
+        types, real = {}, {}
+        for cn, dt, p, s, ln in cur.fetchall():
+            key = cn.lower()
+            types[key] = _sf_type(dt, p, s, ln)
+            real[key] = cn
+        cat[name] = {"database": db, "schema": schema, "types": types, "_real": real}
+    cur.close()
+    return cat
+
+
+def _q(ident):
+    """Snowflake 識別子を二重引用符でクォート（小文字クォート列・大文字列の両対応）。"""
+    return '"' + ident.replace('"', '""') + '"'
+
+
+def profile_table_sf(conn, db, schema, table, cols_real):
+    """Snowflake を読み取り(SELECT)のみで NULL/一意性/サンプル値を実測。cols_real=[(lower, actual), ...]。"""
+    cur = conn.cursor()
+    fq = f"{db}.{schema}.{_q(table.upper())}"
+    sel = ['COUNT(*) AS "_total"']
+    for low, actual in cols_real:
+        c = _q(actual)
+        sel.append(f'COUNT_IF({c} IS NULL) AS "n__{low}"')
+        sel.append(f'COUNT(DISTINCT {c}) AS "d__{low}"')
+        sel.append(f'MIN(TO_VARCHAR({c})) AS "s__{low}"')  # 非NULLの一例（型に依存しないよう文字列化）
+    cur.execute(f"SELECT {', '.join(sel)} FROM {fq}")
+    names = [d[0].lower() for d in cur.description]
+    row = dict(zip(names, cur.fetchone()))
+    total = row["_total"]
+    prof = {"_total": total}
+    low_cards = []
+    for low, actual in cols_real:
+        nulls = row[f"n__{low}"] or 0
+        dist = row[f"d__{low}"] or 0
+        nonnull = total - nulls
+        prof[low] = {
+            "type": "", "nulls": nulls, "dist": dist, "total": total,
+            "nn": nulls == 0 and total > 0,
+            "uk": dist == nonnull and nonnull > 0,
+            "pk": nulls == 0 and dist == total and total > 0,
+            "values": None, "sample": row[f"s__{low}"],
+        }
+        if 0 < dist <= ENUM_MAX:
+            low_cards.append((low, actual))
+    for low, actual in low_cards:  # 低カーディナリティ列はサンプル値に全列挙
+        c = _q(actual)
+        cur.execute(f"SELECT DISTINCT TO_VARCHAR({c}) v FROM {fq} "
+                    f"WHERE {c} IS NOT NULL ORDER BY 1 LIMIT {ENUM_MAX + 1}")
+        prof[low]["values"] = [r[0] for r in cur.fetchall()]
+    cur.close()
+    return prof
+
+
+def check_composite_pk_sf(conn, db, schema, table, combo_real, total):
+    """複合キーが一意かを Snowflake で検証。combo_real=実カラム名のリスト。"""
+    cur = conn.cursor()
+    concat = ", '|', ".join(f"NVL(TO_VARCHAR({_q(c)}), '∅')" for c in combo_real)
+    cur.execute(f"SELECT COUNT(DISTINCT CONCAT({concat})) FROM {db}.{schema}.{_q(table.upper())}")
+    d = cur.fetchone()[0]
+    cur.close()
+    return d == total
+
+
+def build_profiles_sf(conn, db, sf_catalog):
+    """全テーブルを Snowflake でプロファイルし、複合PK・FK（既知ルール）も付与して返す。"""
+    out = {}
+    for table, meta in sf_catalog.items():
+        schema = meta["schema"]
+        real = meta["_real"]
+        cols_real = [(low, real[low]) for low in meta["types"]]
+        try:
+            prof = profile_table_sf(conn, db, schema, table, cols_real)
+            total = prof["_total"]
+            composite = set()
+            has_single_pk = any(v.get("pk") for k, v in prof.items() if k != "_total")
+            if not has_single_pk and table in CANDIDATE_PKS:
+                combo = CANDIDATE_PKS[table]
+                if all(c in real for c in combo) and check_composite_pk_sf(
+                        conn, db, schema, table, [real[c] for c in combo], total):
+                    composite = set(combo)
+            # FK は既知ルール（BQで包含検証済み・データは SF と一致）を documented として付与
+            fk = {ccol: f"{pt}.{pcol}" for (ct, ccol), (pt, pcol) in FK_RULES.items() if ct == table}
+            out[table] = {"cols": prof, "composite_pk": composite, "fk": fk}
+        except Exception as e:  # noqa: BLE001
+            print(f"[警告] {table} のSnowflakeプロファイルをスキップ: {e}")
     return out
 
 
@@ -697,41 +850,115 @@ def main():
                     help="雛形(tmp...)シートを出力に残す")
     ap.add_argument("--table", default=None,
                     help="指定したテーブル名のみを出力（お試し実行用）")
-    ap.add_argument("--models", nargs="*",
-                    default=["docomo_event/models/intermediate",
-                             "docomo_event/models/marts/planning"],
-                    help="raw以外に定義書へ含めるモデルyml/ディレクトリ。空指定で無効")
+    ap.add_argument("--models", nargs="*", default=None,
+                    help="raw以外に定義書へ含めるモデルyml/ディレクトリ。"
+                         "未指定なら engine 既定（bq=intermediate+marts / sf=staging）。空指定で無効")
+    ap.add_argument("--engine", choices=["bq", "sf", "mixed"], default="bq",
+                    help="型・プロファイルの参照先。bq=BigQuery / sf=Snowflake / "
+                         "mixed=raw,stgはSF・int,martはBQ（BQ型→SF型へ変換）")
+    ap.add_argument("--sf-secrets", default="streamlit/uploader/.streamlit/secrets.toml",
+                    help="Snowflake 接続情報（[snowflake]）。engine=sf/mixed のとき使用")
+    ap.add_argument("--layers", nargs="*", default=None,
+                    help="出力レイヤーを限定（例: raw stg）。未指定なら全て")
+    ap.add_argument("--db-name", default=None,
+                    help="データベース名の表示を上書き（例: docomo_db）。実測スキーマには影響しない")
+    ap.add_argument("--schema-as-layer", action="store_true",
+                    help="スキーマ名の表示をレイヤー名（raw/stg/int/mart）にする")
     ap.add_argument("--profile", dest="profile", action="store_true", default=True,
-                    help="BigQueryを読み取り(SELECT)してNOT NULL/UK/PK/FK/サンプル値を実測（既定: 有効）")
+                    help="DBを読み取り(SELECT)してNOT NULL/UK/PK/FK/サンプル値を実測（既定: 有効）")
     ap.add_argument("--no-profile", dest="profile", action="store_false",
-                    help="BigQueryへのプロファイリングを行わず yml のみで埋める")
+                    help="DBへのプロファイリングを行わず yml のみで埋める")
     ap.add_argument("--project", default="digital-well-456700-i9",
-                    help="プロファイリング対象のGCPプロジェクトID")
+                    help="プロファイリング対象のGCPプロジェクトID（engine=bq/mixed）")
     args = ap.parse_args()
+
+    # --models の既定を engine 別に解決
+    if args.models is None:
+        if args.engine == "sf":
+            args.models = ["docomo_event/models/staging/_staging__models.yml"]
+        elif args.engine == "mixed":
+            args.models = ["docomo_event/models/staging/_staging__models.yml",
+                           "docomo_event/models/intermediate",
+                           "docomo_event/models/marts/planning"]
+        else:
+            args.models = ["docomo_event/models/intermediate",
+                           "docomo_event/models/marts/planning"]
+
+    # BQ catalog は bq/mixed で使用（型・スキーマ（=レイヤー）判定）
+    bq_catalog = load_catalog(args.catalog) if args.engine in ("bq", "mixed") else {}
 
     tables = load_sources(args.sources)
     layers = {t["name"]: "raw" for t in tables}
     if args.models:
         models = load_models(args.models)
         for m in models:
-            layers[m["name"]] = "model"
+            if args.engine == "sf":
+                layers[m["name"]] = "stg"
+            elif args.engine == "mixed":
+                layers[m["name"]] = layer_of(bq_catalog.get(m["name"], {}).get("schema", "")) or "stg"
+            else:
+                layers[m["name"]] = "model"
         tables += models
-    catalog = load_catalog(args.catalog)
 
     if args.table:
         tables = [t for t in tables if t["name"] == args.table]
         if not tables:
             raise SystemExit(f"テーブルが見つかりません: {args.table}")
+    if args.layers:
+        tables = [t for t in tables if layers.get(t["name"]) in args.layers]
+        if not tables:
+            raise SystemExit(f"指定レイヤーに該当テーブルなし: {args.layers}")
 
-    # BigQuery プロファイリング（読み取りのみ）。失敗してもyml由来で続行。
+    # 参照先の振り分け: SF=raw/stg、BQ=int/mart（bq/sf エンジンでは一方に寄せる）
+    if args.engine == "sf":
+        sf_tables, bq_tables = tables, []
+    elif args.engine == "bq":
+        sf_tables, bq_tables = [], tables
+    else:  # mixed
+        sf_tables = [t for t in tables if layers[t["name"]] in ("raw", "stg")]
+        bq_tables = [t for t in tables if layers[t["name"]] in ("int", "mart")]
+
+    sf_conn = None
+    catalog = {}
     profiles = {}
-    if args.profile:
-        target = {t["name"]: catalog[t["name"]] for t in tables if t["name"] in catalog}
-        try:
-            profiles = build_profiles(args.project, target)
-            print(f"プロファイリング完了: {len(profiles)}テーブル（BigQuery読み取り）")
-        except Exception as e:  # noqa: BLE001
-            print(f"[警告] プロファイリングをスキップ（yml由来で続行）: {e}")
+
+    # SF（raw / stg）: 型・プロファイルを Snowflake から取得（読み取りのみ）
+    if sf_tables:
+        want = {t["name"]: layers[t["name"]] for t in sf_tables}
+        sf_conn, sf_db = sf_connect(args.sf_secrets)
+        sfcat = load_sf_catalog(sf_conn, sf_db, want)
+        catalog.update(sfcat)
+        if args.profile:
+            try:
+                profiles.update(build_profiles_sf(sf_conn, sf_db, sfcat))
+                print(f"Snowflakeプロファイリング: {len(sfcat)}テーブル")
+            except Exception as e:  # noqa: BLE001
+                print(f"[警告] Snowflakeプロファイリングをスキップ: {e}")
+
+    # BQ（int / mart、または engine=bq の全テーブル）: catalog.json ＋ BQ実測
+    if bq_tables:
+        if not bq_catalog:
+            bq_catalog = load_catalog(args.catalog)
+        bqcat = {t["name"]: bq_catalog[t["name"]] for t in bq_tables if t["name"] in bq_catalog}
+        if args.engine == "mixed":  # int/mart の BQ型を SF表記へ変換して統一
+            for meta in bqcat.values():
+                meta["types"] = {c: bq_to_sf_type(t) for c, t in meta["types"].items()}
+        catalog.update(bqcat)
+        if args.profile:
+            try:
+                profiles.update(build_profiles(args.project, bqcat))
+                print(f"BigQueryプロファイリング: {len(bqcat)}テーブル")
+            except Exception as e:  # noqa: BLE001
+                print(f"[警告] BigQueryプロファイリングをスキップ: {e}")
+
+    # 表示上書き（プロファイル後なので実測には影響しない）: データベース名 / スキーマ名
+    for t in tables:
+        name = t["name"]
+        if name in catalog:
+            if args.db_name:
+                catalog[name]["database"] = args.db_name
+            if args.schema_as_layer:
+                catalog[name]["schema"] = layers[name]
 
     wb = load_workbook(args.template)
     template_ws = find_template_sheet(wb)
@@ -787,6 +1014,8 @@ def main():
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
     wb.save(args.output)
+    if sf_conn is not None:
+        sf_conn.close()
     print(f"生成完了: {args.output}（{len(created)}テーブル分のシートを作成）")
 
 
