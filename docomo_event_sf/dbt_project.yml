@@ -19,6 +19,11 @@ clean-targets:
 
 models:
   docomo_event_sf:
+    # 源泉作成: BQ の docomo_event_raw.raw_*（計算済みソース）を Snowflake 上で再現する層。
+    # RAW にアップロード済みの生データ（RAW_*）から計算し、BQ raw と同名のテーブルを RAW に作る。
+    source_creation:
+      +schema: raw       # → HARATO.RAW
+      +materialized: table
     staging:
       +schema: stg       # → HARATO.STG
       +materialized: view
