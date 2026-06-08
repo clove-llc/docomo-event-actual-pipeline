@@ -1,7 +1,7 @@
 # raw_facility_master 数値検証
 
 ## 1. メタ情報
-- 実施日: 2026-06-05
+- 実施日: 2026-06-08
 - 実施者: numerical-verification skill
 - 検証コード: `cd docomo_event_sf && python tools/verify_code.py --table 施設マスタ --show-diff`
 
