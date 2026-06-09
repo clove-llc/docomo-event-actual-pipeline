@@ -31,6 +31,7 @@ import argparse
 import json
 import math
 import os
+import re
 from copy import copy
 
 import yaml
@@ -474,6 +475,74 @@ def build_profiles_sf(conn, db, sf_catalog):
     return out
 
 
+# Snowflake 横持ちアップロード源泉（BQ には無い SF 固有テーブル。source_creation の入力）。
+# 日付列（YYYY-MM-DD）は横持ちで数百列になるため、定義書では1行に集約して記載する。
+# (SF実テーブル, シート/モデル名, 論理名, 用途・概要)
+SF_SOURCE_DOCS = [
+    ("RAW_FACILITY_ACTUALS_202504", "raw_facility_actuals_yyyymm", "実績データ（横持ち・月別）",
+     "アップローダが月別シートからロードした実績の横持ち生データ。固定列＋日別実績列（1日1列）。"
+     "月別に RAW_FACILITY_ACTUALS_<yyyymm>（202504〜202603・全12テーブル）として存在し構造は同一。"
+     "縦持ち化・クレンジングして raw_facility_actuals を作成する源泉。"),
+    ("RAW_FACILITY_SEASONAL_DAILY", "raw_facility_seasonal_daily", "季節指数SENSE 日次（横持ち）",
+     "施設別の日次SENSE値（横持ち・1日1列）。raw_facility_daily_deviation_zscore の源泉。"),
+    ("RAW_FACILITY_FOOT_TRAFFIC_DAILY", "raw_facility_foot_traffic_daily", "人流SENSE 日次（横持ち）",
+     "施設別の日次人流SENSE値（横持ち・1日1列）。raw_facility_foot_traffic_avg_and_decile_by_flag の源泉。"),
+    ("RAW_KDDI_FOOT_TRAFFIC", "raw_kddi_foot_traffic", "KDDI 施設別 年間人流TTL",
+     "KDDI の施設別・年間人流合計。日別構成比と掛けて日別人流を推定する源泉。"),
+    ("RAW_DATE_FLAG", "raw_date_flag", "日付→フラグ マスタ",
+     "日付ごとの区分（GW/正月/三連休…）。人流・季節指数のフラグ付与に使用。"),
+]
+
+# 横持ち源泉の固定列（日本語名）の説明。
+JP_COL_DESC = {
+    "No": "連番", "実施月": "実施月", "支社名": "支社名", "支店": "支店", "施設名": "施設名",
+    "フロア": "階数・フロア", "スペース名": "スペース名", "面積": "面積（生値）",
+    "ヘルパー会社": "協力会社・ヘルパー会社", "スタッフ数": "スタッフ数（生値）",
+    "開始日": "開始日", "終了日": "終了日", "実施日数": "実施日数（生値）",
+    "施設コード": "施設コード", "年間平均値": "年間平均値",
+    "facility_code": "施設コード", "facility_name": "施設名", "foot_traffic_total": "年間人流TTL",
+    "date": "日付", "date_flag": "日付フラグ", "latest_updated_at": "ロード時刻（アップローダ付与）",
+}
+
+_DATE_COL_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def build_sf_source_entries(conn, db):
+    """Snowflake の横持ちアップロード源泉を、固定列＋日付列集約1行のテーブル定義に整える。
+
+    返り値: (tables, catalog, logical_names)。profile は付けない（生データのため構造のみ）。
+    """
+    cur = conn.cursor()
+    tables, catalog, logicals = [], {}, {}
+    for sf_table, name, logical, desc in SF_SOURCE_DOCS:
+        cur.execute(
+            f"select column_name, data_type, numeric_precision, numeric_scale, character_maximum_length "
+            f"from {db}.INFORMATION_SCHEMA.COLUMNS "
+            f"where table_schema = 'RAW' and table_name = %s order by ordinal_position",
+            (sf_table,))
+        rows = cur.fetchall()
+        cols, types = [], {}
+        date_cols = [cn for cn, *_ in rows if _DATE_COL_RE.match(cn)]
+        for cn, dt, p, s, ln in rows:
+            if _DATE_COL_RE.match(cn):
+                continue  # 日付列は後でまとめて1行に
+            cols.append({"name": cn, "description": JP_COL_DESC.get(cn, ""),
+                         "not_null": False, "unique": False, "pk": False, "fk": "", "accepted": []})
+            types[cn] = _sf_type(dt, p, s, ln)
+        if date_cols:
+            label = f"（日付列）{date_cols[0]} 〜 {date_cols[-1]}"
+            cols.append({"name": label,
+                         "description": f"日別の値（横持ち・1日1列、計{len(date_cols)}列）。"
+                                        f"原文VARCHAR（＠/中止/なし/数値 等をそのまま保持）。",
+                         "not_null": False, "unique": False, "pk": False, "fk": "", "accepted": []})
+            types[label] = "VARCHAR"
+        tables.append({"name": name, "description": desc, "schema": "RAW", "database": db, "columns": cols})
+        catalog[name] = {"database": db, "schema": "RAW", "types": types}
+        logicals[name] = logical
+    cur.close()
+    return tables, catalog, logicals
+
+
 def find_template_sheet(wb):
     """名前が tmp で始まる定義シート雛形を返す。"""
     for ws in wb.worksheets:
@@ -864,6 +933,8 @@ def main():
                     help="データベース名の表示を上書き（例: docomo_db）。実測スキーマには影響しない")
     ap.add_argument("--schema-as-layer", action="store_true",
                     help="スキーマ名の表示をレイヤー名（raw/stg/int/mart）にする")
+    ap.add_argument("--sf-sources", action="store_true",
+                    help="Snowflake の横持ちアップロード源泉（実績横持ち/SENSE日次/KDDI/日付フラグ）を raw 層に追加")
     ap.add_argument("--profile", dest="profile", action="store_true", default=True,
                     help="DBを読み取り(SELECT)してNOT NULL/UK/PK/FK/サンプル値を実測（既定: 有効）")
     ap.add_argument("--no-profile", dest="profile", action="store_false",
@@ -950,6 +1021,18 @@ def main():
                 print(f"BigQueryプロファイリング: {len(bqcat)}テーブル")
             except Exception as e:  # noqa: BLE001
                 print(f"[警告] BigQueryプロファイリングをスキップ: {e}")
+
+    # 横持ちアップロード源泉（SF固有・BQ無し）を raw 層の先頭に追加（構造のみ・プロファイルなし）
+    if args.sf_sources and (not args.layers or "raw" in args.layers):
+        if sf_conn is None:
+            sf_conn, sf_db = sf_connect(args.sf_secrets)
+        src_tables, src_catalog, src_logicals = build_sf_source_entries(sf_conn, sf_db)
+        for t in src_tables:
+            layers[t["name"]] = "raw"
+        LOGICAL_NAMES.update(src_logicals)
+        catalog.update(src_catalog)
+        tables = src_tables + tables  # 上流源泉を先頭に並べる
+        print(f"横持ち源泉を追加: {len(src_tables)}テーブル（Snowflake INFORMATION_SCHEMA）")
 
     # 表示上書き（プロファイル後なので実測には影響しない）: データベース名 / スキーマ名
     for t in tables:
