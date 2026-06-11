@@ -54,6 +54,8 @@ BQ_PROJECT = os.environ.get("BQ_PROJECT", "digital-well-456700-i9")
 #   stg : BQ docomo_event_staging.stg_*        ↔ SF HARATO.STG.STG_*（BQ staging のミラー）
 BQ_RAW_DATASET = os.environ.get("BQ_RAW_DATASET", "docomo_event_raw")
 BQ_STG_DATASET = os.environ.get("BQ_STG_DATASET", "docomo_event_staging")
+BQ_INT_DATASET = os.environ.get("BQ_INT_DATASET", "docomo_event_intermediate")
+BQ_MART_DATASET = os.environ.get("BQ_MART_DATASET", "docomo_event_mart")
 NUM_ROUND = 9  # IEEE 浮動小数の表現ゆらぎを吸収する丸め桁（データ精度より十分細かい）
 # Excel エラー（BQ は文字列保持・SF は NULL）。比較では NULL に揃えて吸収する。
 EXCEL_ERRORS = {"#N/A", "#NAME?", "#REF!", "#VALUE!", "#DIV/0!", "#NUM!", "#NULL!"}
@@ -99,6 +101,18 @@ TABLES = [
     ("日付マスタ", "stg", BQ_STG_DATASET, "stg_date_master", "HARATO.STG.STG_DATE_MASTER", T_DATE_MASTER, {}),
     ("施設マスタ", "stg", BQ_STG_DATASET, "stg_facility_master", "HARATO.STG.STG_FACILITY_MASTER", T_FACILITY_MASTER, {}),
     ("施設名マッピング", "stg", BQ_STG_DATASET, "stg_facility_name_mappings", "HARATO.STG.STG_FACILITY_NAME_MAPPINGS", T_NAME_MAPPINGS, {}),
+    # --- int 層（BQ docomo_event_intermediate ↔ SF HARATO.INT）。列型はBQ schemaから自動導出（types=None）---
+    ("実績(int)", "int", BQ_INT_DATASET, "int_facility_actuals", "HARATO.INT.INT_FACILITY_ACTUALS", None, _EXCL_ACTUALS),
+    ("日別実績", "int", BQ_INT_DATASET, "int_facility_daily_actual", "HARATO.INT.INT_FACILITY_DAILY_ACTUAL", None, {}),
+    ("ベンチ期間", "int", BQ_INT_DATASET, "int_benchmark_periods", "HARATO.INT.INT_BENCHMARK_PERIODS", None, {}),
+    ("デシルマッピング", "int", BQ_INT_DATASET, "int_facility_event_decile_mapping", "HARATO.INT.INT_FACILITY_EVENT_DECILE_MAPPING", None, {}),
+    ("デシル平均実績", "int", BQ_INT_DATASET, "int_facility_event_decile_avg_actual", "HARATO.INT.INT_FACILITY_EVENT_DECILE_AVG_ACTUAL", None, {}),
+    ("デシルベンチ", "int", BQ_INT_DATASET, "int_event_decile_benchmark", "HARATO.INT.INT_EVENT_DECILE_BENCHMARK", None, {}),
+    ("月週フラグZ", "int", BQ_INT_DATASET, "int_facility_monthly_weekday_dateflag_deviation_zscore", "HARATO.INT.INT_FACILITY_MONTHLY_WEEKDAY_DATEFLAG_DEVIATION_ZSCORE", None, {}),
+    ("月フラグZ", "int", BQ_INT_DATASET, "int_facility_monthly_dateflag_deviation_zscore", "HARATO.INT.INT_FACILITY_MONTHLY_DATEFLAG_DEVIATION_ZSCORE", None, {}),
+    ("計画スナップショット", "int", BQ_INT_DATASET, "int_facility_event_planning_snapshot", "HARATO.INT.INT_FACILITY_EVENT_PLANNING_SNAPSHOT", None, {}),
+    # --- mart 層（BQ docomo_event_mart ↔ SF HARATO.MART）---
+    ("実績スロットFact", "mart", BQ_MART_DATASET, "fact_facility_performance_slots", "HARATO.MART.FACT_FACILITY_PERFORMANCE_SLOTS", None, {}),
 ]
 
 
@@ -136,6 +150,25 @@ def multiset_hash(counter: Counter) -> str:
 
 
 # ===== データ取得 =====
+def _bq_logical_type(bq_type: str) -> str:
+    """BigQuery のデータ型 → 突合用の論理型（num/date/bool/str）。"""
+    t = (bq_type or "").upper().split("(")[0]
+    if t in ("INT64", "INTEGER", "NUMERIC", "BIGNUMERIC", "FLOAT64", "FLOAT", "DECIMAL"):
+        return "num"
+    if t == "DATE":
+        return "date"
+    if t in ("BOOL", "BOOLEAN"):
+        return "bool"
+    return "str"  # STRING / DATETIME / TIMESTAMP 等は文字列扱いで比較
+
+
+def bq_column_types(client, dataset: str, table: str) -> dict:
+    """BQ INFORMATION_SCHEMA から {列名(小文字): 論理型} を作る（int/mart の列定義を自動導出）。"""
+    sql = (f"SELECT column_name, data_type FROM `{BQ_PROJECT}.{dataset}.INFORMATION_SCHEMA.COLUMNS` "
+           f"WHERE table_name = '{table}' ORDER BY ordinal_position")
+    return {r["column_name"].lower(): _bq_logical_type(r["data_type"]) for r in client.query(sql).result()}
+
+
 def bq_dataframe(client, dataset: str, table: str, cols: list[str]) -> pd.DataFrame:
     sql = f"SELECT {', '.join(cols)} FROM `{BQ_PROJECT}.{dataset}.{table}`"
     rows = list(client.query(sql).result())
@@ -194,7 +227,7 @@ def compare(label, bq_df, sf_df, types, exclude, show_diff=False) -> bool:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--table", help="ラベル指定で1テーブルのみ突合")
-    ap.add_argument("--layer", choices=["raw", "stg"], help="レイヤー指定で絞り込み（raw / stg）")
+    ap.add_argument("--layer", choices=["raw", "stg", "int", "mart"], help="レイヤー指定で絞り込み")
     ap.add_argument("--show-diff", action="store_true", help="不一致行のサンプルを表示")
     args = ap.parse_args()
 
@@ -212,9 +245,18 @@ def main() -> int:
             if layer != current_layer:
                 current_layer = layer
                 print(f"\n--- {layer} 層（BQ {bq_dataset} ↔ SF HARATO.{layer.upper()}）---")
-            bq_df = bq_dataframe(bq, bq_dataset, bq_table, list(types))
+            # int/mart は列定義を BQ schema から自動導出（types=None）
+            if types is None:
+                types = bq_column_types(bq, bq_dataset, bq_table)
             sf_df = sf_dataframe(sf, sf_fqtn)
-            results.append(compare(f"{label}[{layer}]", bq_df, sf_df, types, exclude, args.show_diff))
+            sf_cols = set(sf_df.columns)
+            # SF に存在する列のみ比較対象（mirror 不整合は警告して除外）
+            common = {c: t for c, t in types.items() if c in sf_cols}
+            dropped = [c for c in types if c not in sf_cols]
+            if dropped:
+                print(f"   [警告] {label}[{layer}] SFに無い列を比較除外: {dropped}")
+            bq_df = bq_dataframe(bq, bq_dataset, bq_table, list(common))
+            results.append(compare(f"{label}[{layer}]", bq_df, sf_df, common, exclude, args.show_diff))
     finally:
         sf.close()
     print("\n総合:", "★ 全テーブル一致" if all(results) else "差分あり")
