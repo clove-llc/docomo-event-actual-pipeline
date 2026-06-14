@@ -33,3 +33,17 @@ models:
     marts:
       +schema: mart      # → HARATO.MART
       +materialized: table
+    # dynamic_table 検証層: dbt-snowflake の materialized='dynamic_table' を検証する。
+    # 既存の INT/MART を汚さないよう専用スキーマ HARATO.DYN に分離する。
+    dynamic_table:
+      +schema: dyn       # → HARATO.DYN
+      +materialized: dynamic_table
+      +snowflake_warehouse: STREAMLIT_WH  # dynamic table のリフレッシュに使う WH（必須）
+      +target_lag: "1 minute"             # データ鮮度の目標（必須）。検証用に最小の1分。downstream も可
+      +refresh_mode: AUTO                  # AUTO / FULL / INCREMENTAL
+
+# seed（dynamic_table 検証の源泉）も専用スキーマ HARATO.DYN に置く。
+seeds:
+  docomo_event_sf:
+    dynamic_table:
+      +schema: dyn       # → HARATO.DYN
