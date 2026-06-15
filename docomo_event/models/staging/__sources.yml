@@ -312,3 +312,23 @@ sources:
 
           - name: actual_value
             description: "実績値（契約数など）"
+
+      - name: raw_excluded_facility_master
+        description: "除外対象施設を保持するrawテーブル"
+        columns:
+          - name: facility_name
+            description: "除外対象施設名"
+            tests:
+              - not_null
+
+      - name: raw_facility_target_cpa_master
+        description: "各施設のCPAを保持するrawテーブル"
+        columns:
+          - name: facility_name
+            description: "施設名"
+            tests:
+              - not_null
+          - name: cpa
+            description: "CPA"
+            tests:
+              - not_null

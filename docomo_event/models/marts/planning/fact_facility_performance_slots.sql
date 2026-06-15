@@ -43,6 +43,9 @@ SELECT
   b.month,
   b.week_number_monthly,
   b.date_flag,
+  i_f_t.cpa,
+  i_f_t.cpa IS NOT NULL AS has_target_cpa,
+  (s_e_f_m.facility_name IS NOT NULL OR i_f_t.cpa > 100000) AS is_excluded,
   CASE
     WHEN b.date_flag = 'GW' OR b.date_flag = 'お盆' THEN f_e_p_s_all_period.all_period_standard_target
     ELSE f_e_p_s.standard_target
@@ -117,3 +120,7 @@ LEFT JOIN {{ ref("int_facility_monthly_dateflag_deviation_zscore") }} AS i_f_m_d
     b.facility_code = i_f_m_d_g_z.facility_code
     AND b.month = i_f_m_d_g_z.month
     AND i_f_m_d_g_z.date_flag = '通常土日'
+LEFT JOIN {{ ref("int_facility_target_cpa_by_facility") }} AS i_f_t
+  ON b.facility_name = i_f_t.facility_name
+LEFT JOIN {{ ref("stg_excluded_facility_master") }} AS s_e_f_m
+  ON b.facility_name = s_e_f_m.facility_name
