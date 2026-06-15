@@ -15,3 +15,11 @@ models:
 
       - name: decile_rank
         description: "日付フラグに応じたデシルランク"
+
+  - name: int_facility_target_cpa_by_facility
+    description: "施設名で集約してCPAをAVGしたintermediateモデル"
+    columns:
+      - name: facility_name
+        description: "重複削除した施設名"
+      - name: cpa
+        description: "AVGしたCPA"

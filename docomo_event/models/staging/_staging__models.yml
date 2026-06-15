@@ -306,3 +306,23 @@ models:
 
       - name: actual_value
         description: "実績値（契約数など）"
+
+  - name: stg_excluded_facility_master
+    description: "除外対象施設を保持するstgテーブル"
+    columns:
+      - name: facility_name
+        description: "除外対象施設名"
+        tests:
+          - not_null
+
+  - name: stg_facility_target_cpa_master
+    description: "各施設のCPAを保持するstgテーブル"
+    columns:
+      - name: facility_name
+        description: "施設名"
+        tests:
+          - not_null
+      - name: cpa
+        description: "CPA"
+        tests:
+          - not_null

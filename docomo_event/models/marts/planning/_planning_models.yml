@@ -40,6 +40,15 @@ models:
       - name: date_flag
         description: "日付フラグ"
 
+      - name: cpa
+        description: 過去データのCPA
+
+      - name: has_target_cpa
+        description: 過去データのCPA有無判定フラグ
+
+      - name: is_excluded
+        description: 除外対象フラグ
+
       - name: standard_target
         description: "標準目標値"
 
