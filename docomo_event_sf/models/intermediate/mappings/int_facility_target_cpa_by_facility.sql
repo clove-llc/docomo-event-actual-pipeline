@@ -1,0 +1,6 @@
+select
+  s_f_t.facility_name,
+  avg(s_f_t.cpa) as cpa
+from {{ ref("stg_facility_target_cpa_master") }} as s_f_t
+group by
+  s_f_t.facility_name

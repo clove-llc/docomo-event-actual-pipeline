@@ -22,5 +22,9 @@ sources:
         description: "施設マスタ（全列raw）"
       - name: RAW_FACILITY_NAME_MAPPINGS
         description: "施設名 表記ゆれマッピング"
+      - name: RAW_EXCLUDED_FACILITY_MASTER
+        description: "除外対象施設"
+      - name: RAW_FACILITY_TARGET_CPA_MASTER
+        description: "各施設のCPA"
       # 実績データは月別 RAW_FACILITY_ACTUALS_<yyyymm>（動的）。
       # raw_facility_actuals モデルが dbt_utils.get_relations_by_pattern で自動検出するため source 定義は不要。
