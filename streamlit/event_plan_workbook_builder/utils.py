@@ -1,0 +1,30 @@
+from __future__ import annotations
+
+import calendar
+
+
+def parse_int(value: str) -> int | None:
+    """カンマ付き数値文字列を int に変換する。空欄は None。"""
+    normalized = value.replace(",", "").strip()
+
+    if normalized == "":
+        return None
+
+    try:
+        return int(normalized)
+    except ValueError:
+        return None
+
+
+def format_period(year: int, month: int) -> str:
+    """対象年月から提案期間文字列を作成する。"""
+    last_day = calendar.monthrange(year, month)[1]
+    return f"{year}/{month}/1~{year}/{month}/{last_day}"
+
+
+def calculate_cpa(condition_cost: int | None, target_pi: int | None) -> int | None:
+    """条件コスト / 目標PI からCPAを計算する。"""
+    if condition_cost is None or target_pi is None or target_pi == 0:
+        return None
+
+    return round(condition_cost / target_pi)
