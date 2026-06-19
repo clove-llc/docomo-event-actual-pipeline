@@ -13,16 +13,16 @@ dependencies = [
     "pyarrow (>=23.0.1,<24.0.0)",
     "gspread (>=6.2.1,<7.0.0)",
     "oauth2client (>=4.1.3,<5.0.0)",
-    "pandas (>=3.0.1,<4.0.0)",
+    "pandas==2.*",
     "dbt-core (>=1.11.8,<2.0.0)",
     "dbt-bigquery (>=1.11.1,<2.0.0)",
     "dbt-snowflake (>=1.11.5,<2.0.0)",
     "shandy-sqlfmt[jinjafmt] (>=0.29.0,<0.30.0)",
     "sqlfluff (>=4.1.0,<5.0.0)",
     "sqlfluff-templater-dbt (>=4.1.0,<5.0.0)",
-    "streamlit (>=1.58.0,<2.0.0)",
-    "openpyxl (>=3.1.5,<4.0.0)",
-    "snowflake-connector-python (>=4.6.0,<5.0.0)",
+    "streamlit==1.52.2",
+    "openpyxl==3.1.5",
+    "snowflake-connector-python==4.6.0",
 ]
 
 
