@@ -85,5 +85,5 @@ select
         when base.standard_target < base.p75 then base.p75
         when base.standard_target < base.p90 then base.p90
         else base.max_performance
-    end as int_facility_event_planning_snapshot
+    end as challenge_target
 from base
