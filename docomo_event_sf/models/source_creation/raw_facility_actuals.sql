@@ -11,6 +11,7 @@
 -#}
 
 {{ config(materialized='table') }}
+{%- set raw_database = var('raw_database', 'HARATO') -%}
 
 {%- set raw_schema = var('raw_schema', 'RAW') -%}
 {#- get_relations_by_pattern は introspection（DB接続）が要る。parse時（execute=false）は
@@ -18,6 +19,7 @@
 {%- set relations = [] -%}
 {%- if execute -%}
   {%- set relations = dbt_utils.get_relations_by_pattern(
+        database=raw_database,
         schema_pattern=raw_schema,
         table_pattern='RAW_FACILITY_ACTUALS_2%'
   ) -%}

@@ -4,7 +4,7 @@ version: 2
 # schema は接続プロファイルの schema（=RAW の置き場）を指す想定。
 sources:
   - name: raw
-    database: "{{ target.database }}"
+    database: HARATO
     schema: RAW
     description: "Excel アップローダがロードした生データ（HARATO.RAW.RAW_*）"
     tables:
