@@ -3,7 +3,7 @@
 name: "docomo_event_sf"
 version: "1.0.0"
 
-# ~/.dbt/profiles.yml の Snowflake 接続（env_var ベース）
+# profiles.yml の Snowflake 接続（プロファイル名: docomo_event）
 profile: "dbt_project"
 
 model-paths: ["models"]
@@ -39,8 +39,8 @@ models:
       +schema: dyn       # → HARATO.DYN
       +materialized: dynamic_table
       +snowflake_warehouse: STREAMLIT_WH  # dynamic table のリフレッシュに使う WH（必須）
-      +target_lag: "1 minute"             # データ鮮度の目標（必須）。検証用に最小の1分。downstream も可
-      +refresh_mode: AUTO                  # AUTO / FULL / INCREMENTAL
+      +target_lag: "1 minutes"
+      +refresh_mode: "AUTO"
 
 # seed（dynamic_table 検証の源泉）も専用スキーマ HARATO.DYN に置く。
 seeds:
