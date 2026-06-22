@@ -1,65 +1,41 @@
 from __future__ import annotations
-import pandas as pd
-import snowflake.connector
 import streamlit as st
 
-from typing import Any
+from typing import Any, cast
 
 from config import SNOWFLAKE_CACHE_TTL_SECONDS
 from entities import DateDetail, FacilityDailyTargetDetail
-
 from utils import to_date
-
-
-def _connect():
-    snowflake_config = dict(st.secrets["snowflake"])
-    return snowflake.connector.connect(**snowflake_config)
-
-
-from typing import Any, cast
 
 
 def _fetch_all(
     sql: str,
-    params: dict[str, Any] | None = None,
+    params: list[Any] | None = None,
 ) -> list[tuple[Any, ...]]:
-    conn = _connect()
+    conn = st.connection("snowflake")
 
-    try:
-        cursor = conn.cursor()
-        try:
-            if params is None:
-                cursor.execute(sql)
-            else:
-                cursor.execute(sql, params)
+    with conn.cursor() as cursor:
+        if params is None:
+            cursor.execute(sql)
+        else:
+            cursor.execute(sql, params)
 
-            return cast(list[tuple[Any, ...]], cursor.fetchall())
-        finally:
-            cursor.close()
-    finally:
-        conn.close()
+        return cast(list[tuple[Any, ...]], cursor.fetchall())
 
 
 @st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_benchmark_period_keys() -> list[str]:
     """Snowflakeから過去実績対象期間の一覧を取得する。"""
+    conn = st.connection("snowflake")
 
-    conn = _connect()
-
-    try:
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                SELECT DISTINCT
-                    BENCHMARK_PERIOD_KEY
-                FROM INT.INT_BENCHMARK_PERIODS
-                ORDER BY BENCHMARK_PERIOD_KEY DESC
-                """)
-            rows = cursor.fetchall()
-        finally:
-            cursor.close()
-    finally:
-        conn.close()
+    with conn.cursor() as cursor:
+        cursor.execute("""
+            SELECT DISTINCT
+                BENCHMARK_PERIOD_KEY
+            FROM INT.INT_BENCHMARK_PERIODS
+            ORDER BY BENCHMARK_PERIOD_KEY DESC
+            """)
+        rows = cursor.fetchall()
 
     return [str(row[0]) for row in rows]
 
@@ -86,18 +62,18 @@ def fetch_facility_daily_target_details(
             IS_EXCLUDED,
             STANDARD_TARGET_SEASONAL
         FROM MART.FACT_FACILITY_PERFORMANCE_SLOTS
-        WHERE BENCHMARK_PERIOD_KEY = %(benchmark_period_key)s
-          AND EXTRACT(YEAR FROM DATE) = %(year)s
-          AND EXTRACT(MONTH FROM DATE) = %(month)s
-          AND REGIONAL_OFFICE = %(regional_office_name)s
+        WHERE BENCHMARK_PERIOD_KEY = ?
+          AND EXTRACT(YEAR FROM DATE) = ?
+          AND EXTRACT(MONTH FROM DATE) = ?
+          AND REGIONAL_OFFICE = ?
           AND HAS_TARGET_CPA
         """,
-        {
-            "benchmark_period_key": benchmark_period_key,
-            "year": year,
-            "month": month,
-            "regional_office_name": regional_office_name,
-        },
+        [
+            benchmark_period_key,
+            year,
+            month,
+            regional_office_name,
+        ],
     )
 
     return [
@@ -127,14 +103,14 @@ def fetch_date_master(year: int, month: int) -> list[DateDetail]:
             WEEKDAY_NAME_AND_WEEK_NUMBER_MONTHLY,
             DATE_FLAG
         FROM STG.STG_DATE_MASTER
-        WHERE YEAR = %(year)s
-          AND MONTH = %(month)s
+        WHERE YEAR = ?
+          AND MONTH = ?
         ORDER BY DATE
         """,
-        {
-            "year": year,
-            "month": month,
-        },
+        [
+            year,
+            month,
+        ],
     )
 
     return [
