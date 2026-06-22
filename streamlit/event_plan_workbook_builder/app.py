@@ -3,10 +3,15 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from pathlib import Path
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from config import PAGE_TITLE, REGIONAL_OFFICE_NAMES
+from config import (
+    COPILOT_INPUT_TEMPLATE_PATH,
+    COPILOT_OUTPUT_TEMPLATE_PATH,
+    EXCEL_MIME_TYPE,
+    PAGE_TITLE,
+    REGIONAL_OFFICE_NAMES,
+)
 from snowflake_repository import (
     fetch_benchmark_period_keys,
     fetch_date_master,
@@ -24,15 +29,9 @@ from builders.input_workbook_builder import (
 from builders.output_workbook_builder import (
     OutputWorkbookBuilder,
 )
-from utils import calculate_cpa, format_period, parse_int
+from utils import calculate_cpa, calculate_input_data_cpa, format_period, parse_int
 
 from openpyxl import load_workbook
-
-APP_DIR = Path(__file__).resolve().parent
-COPILOT_INPUT_TEMPLATE_PATH = APP_DIR / "templates" / "copilot_input_template.xlsx"
-COPILOT_OUTPUT_TEMPLATE_PATH = APP_DIR / "templates" / "copilot_output_template.xlsx"
-
-EXCEL_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 @dataclass(frozen=True)
@@ -110,7 +109,7 @@ def validate_constraint_inputs(
 def load_facility_daily_target_details(
     settings: PlanningSettings,
 ) -> list[FacilityDailyTargetDetail]:
-    st.subheader("施設別の目標値を取得")
+    st.subheader("施設別・日別目標値")
 
     try:
         facility_daily_target_details = fetch_facility_daily_target_details(
@@ -125,7 +124,7 @@ def load_facility_daily_target_details(
         st.stop()
 
     st.write(
-        f"Snowflakeから「{settings.regional_office_name}」の目標値を "
+        f"Snowflakeから「{settings.regional_office_name}」の「{settings.year}/{settings.month}」の目標値を "
         f"{len(facility_daily_target_details):,} 件取得しました。"
     )
     render_dataframe_preview(
@@ -137,7 +136,7 @@ def load_facility_daily_target_details(
 
 
 def load_date_details(settings: PlanningSettings) -> list[DateDetail]:
-    st.subheader("日付情報を取得")
+    st.subheader("日付情報")
 
     try:
         date_details = fetch_date_master(year=settings.year, month=settings.month)
@@ -159,7 +158,7 @@ def load_date_details(settings: PlanningSettings) -> list[DateDetail]:
 
 
 def render_settings_section() -> PlanningSettings:
-    st.subheader("計画値設定")
+    st.subheader("計画値")
 
     col_regional_office, col_benchmark_period_keys = st.columns(2)
 
@@ -328,44 +327,51 @@ def render_download_button(
         f"{settings.year}{settings.month:02d}.xlsx"
     )
 
-    input_workbook_bytes = b""
-    output_workbook_bytes = b""
+    st.subheader("Excelファイル生成")
 
-    if not disabled:
-        try:
-            input_wb = load_workbook(COPILOT_INPUT_TEMPLATE_PATH)
-            output_wb = load_workbook(COPILOT_OUTPUT_TEMPLATE_PATH)
+    if disabled:
+        st.warning("Excel生成に必要なデータが不足しています。")
+        return
 
-            cpa_list = [int(d.cpa) for d in facility_details if d.cpa not in (None, "")]
-            input_data_cpa = round(sum(cpa_list) / len(cpa_list))
+    if not st.button("Excelファイルを生成", type="primary"):
+        st.info("ボタンを押すとExcelファイルを生成します。")
+        return
 
-            input_workbook_bytes = InputWorkbookBuilder(
-                wb=input_wb,
-                constraint_detail=constraint_detail,
-                facility_details=facility_details,
-                date_details=date_details,
-                facility_daily_target_details=facility_daily_target_details,
-                input_data_cpa=input_data_cpa,
-            ).build()
+    try:
+        input_wb = load_workbook(COPILOT_INPUT_TEMPLATE_PATH)
+        output_wb = load_workbook(COPILOT_OUTPUT_TEMPLATE_PATH)
 
-            output_workbook_bytes = OutputWorkbookBuilder(
-                wb=output_wb,
-                constraint_detail=constraint_detail,
-                facility_details=facility_details,
-                date_details=date_details,
-                facility_daily_target_details=facility_daily_target_details,
-                input_data_cpa=input_data_cpa,
-            ).build()
+        input_data_cpa = calculate_input_data_cpa(facility_details)
 
-        except FileNotFoundError as exc:
-            st.error("Excelテンプレートファイルが見つかりません。")
-            st.exception(exc)
-            disabled = True
+        input_workbook_bytes = InputWorkbookBuilder(
+            wb=input_wb,
+            constraint_detail=constraint_detail,
+            facility_details=facility_details,
+            date_details=date_details,
+            facility_daily_target_details=facility_daily_target_details,
+            input_data_cpa=input_data_cpa,
+        ).build()
 
-        except Exception as exc:  # noqa: BLE001
-            st.error("Excelファイルの生成に失敗しました。")
-            st.exception(exc)
-            disabled = True
+        output_workbook_bytes = OutputWorkbookBuilder(
+            wb=output_wb,
+            constraint_detail=constraint_detail,
+            facility_details=facility_details,
+            date_details=date_details,
+            facility_daily_target_details=facility_daily_target_details,
+            input_data_cpa=input_data_cpa,
+        ).build()
+
+    except FileNotFoundError as exc:
+        st.error("Excelテンプレートファイルが見つかりません。")
+        st.exception(exc)
+        return
+
+    except Exception as exc:  # noqa: BLE001
+        st.error("Excelファイルの生成に失敗しました。")
+        st.exception(exc)
+        return
+
+    st.success("Excelファイルを生成しました。")
 
     col_input, col_output = st.columns(2)
 
@@ -375,7 +381,7 @@ def render_download_button(
             data=input_workbook_bytes,
             file_name=input_file_name,
             mime=EXCEL_MIME_TYPE,
-            disabled=disabled,
+            on_click="ignore",
         )
 
     with col_output:
@@ -384,7 +390,7 @@ def render_download_button(
             data=output_workbook_bytes,
             file_name=output_file_name,
             mime=EXCEL_MIME_TYPE,
-            disabled=disabled,
+            on_click="ignore",
         )
 
 

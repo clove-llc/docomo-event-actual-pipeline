@@ -6,6 +6,8 @@ import calendar
 from datetime import date
 from typing import Any
 
+from entities import FacilityDetail
+
 
 def to_date(value: Any) -> date:
     if isinstance(value, datetime.datetime):
@@ -42,3 +44,14 @@ def calculate_cpa(condition_cost: int | None, target_pi: int | None) -> int | No
         return None
 
     return round(condition_cost / target_pi)
+
+
+def calculate_input_data_cpa(
+    facility_details: list[FacilityDetail],
+) -> int | None:
+    cpa_values = [detail.cpa for detail in facility_details if detail.cpa is not None]
+
+    if len(cpa_values) == 0:
+        return None
+
+    return round(sum(cpa_values) / len(cpa_values))

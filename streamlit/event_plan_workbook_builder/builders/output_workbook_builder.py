@@ -1,3 +1,4 @@
+from __future__ import annotations
 from io import BytesIO
 
 from openpyxl.worksheet.worksheet import Worksheet
@@ -5,9 +6,9 @@ from openpyxl.workbook.workbook import Workbook
 
 from entities import (
     ConstraintDetail,
-    FacilityDetail,
     DateDetail,
     FacilityDailyTargetDetail,
+    FacilityDetail,
 )
 
 
@@ -37,7 +38,7 @@ class OutputWorkbookBuilder:
         facility_details: list[FacilityDetail],
         date_details: list[DateDetail],
         facility_daily_target_details: list[FacilityDailyTargetDetail],
-        input_data_cpa: int,
+        input_data_cpa: int | None,
     ) -> None:
         self.wb = wb
         self.constraint_detail = constraint_detail
