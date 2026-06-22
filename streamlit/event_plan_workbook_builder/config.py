@@ -13,5 +13,5 @@ REGIONAL_OFFICE_NAMES = [
     "北陸",
 ]
 
-PAGE_TITLE = "AI入力Excelシート作成"
+PAGE_TITLE = "AI入力・出力用Excelシート作成"
 SNOWFLAKE_CACHE_TTL_SECONDS = 600

@@ -1,19 +1,38 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
-
 import pandas as pd
 import streamlit as st
 
+from pathlib import Path
+from dataclasses import asdict, dataclass
+from datetime import datetime
 from config import PAGE_TITLE, REGIONAL_OFFICE_NAMES
-from excel_builder import build_input_excel
 from snowflake_repository import (
     fetch_benchmark_period_keys,
     fetch_date_master,
-    fetch_facility_targets,
+    fetch_facility_daily_target_details,
+)
+from entities import (
+    ConstraintDetail,
+    DateDetail,
+    FacilityDailyTargetDetail,
+    FacilityDetail,
+)
+from builders.input_workbook_builder import (
+    InputWorkbookBuilder,
+)
+from builders.output_workbook_builder import (
+    OutputWorkbookBuilder,
 )
 from utils import calculate_cpa, format_period, parse_int
+
+from openpyxl import load_workbook
+
+APP_DIR = Path(__file__).resolve().parent
+COPILOT_INPUT_TEMPLATE_PATH = APP_DIR / "templates" / "copilot_input_template.xlsx"
+COPILOT_OUTPUT_TEMPLATE_PATH = APP_DIR / "templates" / "copilot_output_template.xlsx"
+
+EXCEL_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 @dataclass(frozen=True)
@@ -28,13 +47,35 @@ class PlanningSettings:
         return format_period(self.year, self.month)
 
 
-@dataclass(frozen=True)
-class ConstraintValues:
-    monthly_event_count: int | None
-    weekday_pattern: str
-    target_pi: int | None
-    condition_cost: int | None
-    errors: list[str]
+def build_facility_details(
+    facility_daily_target_details: list[FacilityDailyTargetDetail],
+) -> list[FacilityDetail]:
+    facility_details: list[FacilityDetail] = []
+    seen_keys: set[int | str] = set()
+
+    for detail in facility_daily_target_details:
+        key = detail.facility_code
+
+        if key in seen_keys:
+            continue
+
+        seen_keys.add(key)
+
+        facility_details.append(
+            FacilityDetail(
+                facility_code=detail.facility_code,
+                facility_name=detail.facility_name,
+                po_level=detail.po_level,
+                regional_office=detail.regional_office,
+                branch_office=detail.branch_office,
+                cpa=detail.cpa,
+                is_excluded=detail.is_excluded,
+                monthly_event_limit=None,
+                available_weekdays=None,
+            )
+        )
+
+    return facility_details
 
 
 def validate_constraint_inputs(
@@ -66,11 +107,13 @@ def validate_constraint_inputs(
     return errors
 
 
-def load_facility_targets(settings: PlanningSettings) -> pd.DataFrame:
+def load_facility_daily_target_details(
+    settings: PlanningSettings,
+) -> list[FacilityDailyTargetDetail]:
     st.subheader("施設別の目標値を取得")
 
     try:
-        facility_targets_raw_df = fetch_facility_targets(
+        facility_daily_target_details = fetch_facility_daily_target_details(
             settings.benchmark_period_key,
             settings.year,
             settings.month,
@@ -83,18 +126,21 @@ def load_facility_targets(settings: PlanningSettings) -> pd.DataFrame:
 
     st.write(
         f"Snowflakeから「{settings.regional_office_name}」の目標値を "
-        f"{len(facility_targets_raw_df):,} 件取得しました。"
+        f"{len(facility_daily_target_details):,} 件取得しました。"
     )
-    render_dataframe_preview("取得した目標値を確認する", facility_targets_raw_df)
+    render_dataframe_preview(
+        "取得した目標値を確認する",
+        pd.DataFrame([asdict(detail) for detail in facility_daily_target_details]),
+    )
 
-    return facility_targets_raw_df
+    return facility_daily_target_details
 
 
-def load_date_master(settings: PlanningSettings) -> pd.DataFrame:
+def load_date_details(settings: PlanningSettings) -> list[DateDetail]:
     st.subheader("日付情報を取得")
 
     try:
-        date_master_df = fetch_date_master(year=settings.year, month=settings.month)
+        date_details = fetch_date_master(year=settings.year, month=settings.month)
     except Exception as exc:  # noqa: BLE001
         st.error("Snowflakeから日付情報を取得できませんでした。")
         st.exception(exc)
@@ -102,11 +148,14 @@ def load_date_master(settings: PlanningSettings) -> pd.DataFrame:
 
     st.write(
         f"Snowflakeから「{settings.year}/{settings.month}」の日付情報を "
-        f"{len(date_master_df):,} 件取得しました。"
+        f"{len(date_details):,} 件取得しました。"
     )
-    render_dataframe_preview("取得した日付情報を確認する", date_master_df)
+    render_dataframe_preview(
+        "取得した日付情報を確認する",
+        pd.DataFrame([asdict(detail) for detail in date_details]),
+    )
 
-    return date_master_df
+    return date_details
 
 
 def render_settings_section() -> PlanningSettings:
@@ -173,7 +222,7 @@ def render_settings_section() -> PlanningSettings:
     )
 
 
-def render_constraint_section(proposal_period: str) -> ConstraintValues:
+def render_constraint_section(proposal_period: str) -> ConstraintDetail:
     st.subheader("制約条件")
 
     col_proposal_period, col_monthly_event_count, col_weekday_pattern = st.columns(3)
@@ -240,12 +289,12 @@ def render_constraint_section(proposal_period: str) -> ConstraintValues:
     for error in errors:
         st.error(error)
 
-    return ConstraintValues(
+    return ConstraintDetail(
+        proposal_period=proposal_period,
         monthly_event_count=monthly_event_count,
         weekday_pattern=weekday_pattern,
         target_pi=target_pi,
         condition_cost=condition_cost,
-        errors=errors,
     )
 
 
@@ -257,32 +306,86 @@ def render_dataframe_preview(title: str, df: pd.DataFrame) -> None:
 def render_download_button(
     *,
     settings: PlanningSettings,
-    constraints: ConstraintValues,
-    date_master_df: pd.DataFrame,
-    facility_targets_raw_df: pd.DataFrame,
+    constraint_detail: ConstraintDetail,
+    date_details: list[DateDetail],
+    facility_daily_target_details: list[FacilityDailyTargetDetail],
 ) -> None:
-    excel_bytes = build_input_excel(
-        proposal_period=settings.proposal_period,
-        monthly_event_count=constraints.monthly_event_count,
-        weekday_pattern=constraints.weekday_pattern,
-        target_pi=constraints.target_pi,
-        condition_cost=constraints.condition_cost,
-        date_master_df=date_master_df,
-        facility_targets_raw_df=facility_targets_raw_df,
+    facility_details = build_facility_details(facility_daily_target_details)
+
+    disabled = (
+        len(facility_details) == 0
+        or len(date_details) == 0
+        or len(facility_daily_target_details) == 0
     )
 
-    file_name = (
+    input_file_name = (
         f"{settings.regional_office_name}_AI入力シート_"
         f"{settings.year}{settings.month:02d}.xlsx"
     )
 
-    st.download_button(
-        label="Excelをダウンロード",
-        data=excel_bytes,
-        file_name=file_name,
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        disabled=len(constraints.errors) > 0 or len(facility_targets_raw_df) == 0,
+    output_file_name = (
+        f"{settings.regional_office_name}_AI出力貼付シート_"
+        f"{settings.year}{settings.month:02d}.xlsx"
     )
+
+    input_workbook_bytes = b""
+    output_workbook_bytes = b""
+
+    if not disabled:
+        try:
+            input_wb = load_workbook(COPILOT_INPUT_TEMPLATE_PATH)
+            output_wb = load_workbook(COPILOT_OUTPUT_TEMPLATE_PATH)
+
+            cpa_list = [int(d.cpa) for d in facility_details if d.cpa not in (None, "")]
+            input_data_cpa = round(sum(cpa_list) / len(cpa_list))
+
+            input_workbook_bytes = InputWorkbookBuilder(
+                wb=input_wb,
+                constraint_detail=constraint_detail,
+                facility_details=facility_details,
+                date_details=date_details,
+                facility_daily_target_details=facility_daily_target_details,
+                input_data_cpa=input_data_cpa,
+            ).build()
+
+            output_workbook_bytes = OutputWorkbookBuilder(
+                wb=output_wb,
+                constraint_detail=constraint_detail,
+                facility_details=facility_details,
+                date_details=date_details,
+                facility_daily_target_details=facility_daily_target_details,
+                input_data_cpa=input_data_cpa,
+            ).build()
+
+        except FileNotFoundError as exc:
+            st.error("Excelテンプレートファイルが見つかりません。")
+            st.exception(exc)
+            disabled = True
+
+        except Exception as exc:  # noqa: BLE001
+            st.error("Excelファイルの生成に失敗しました。")
+            st.exception(exc)
+            disabled = True
+
+    col_input, col_output = st.columns(2)
+
+    with col_input:
+        st.download_button(
+            label="AI入力用のExcelをダウンロード",
+            data=input_workbook_bytes,
+            file_name=input_file_name,
+            mime=EXCEL_MIME_TYPE,
+            disabled=disabled,
+        )
+
+    with col_output:
+        st.download_button(
+            label="AI出力貼付用のExcelをダウンロード",
+            data=output_workbook_bytes,
+            file_name=output_file_name,
+            mime=EXCEL_MIME_TYPE,
+            disabled=disabled,
+        )
 
 
 def main() -> None:
@@ -293,19 +396,19 @@ def main() -> None:
     settings = render_settings_section()
 
     st.divider()
-    constraints = render_constraint_section(settings.proposal_period)
+    constraint_detail = render_constraint_section(settings.proposal_period)
 
     st.divider()
-    facility_targets_raw_df = load_facility_targets(settings)
+    facility_daily_target_details = load_facility_daily_target_details(settings)
 
     st.divider()
-    date_master_df = load_date_master(settings)
+    date_details = load_date_details(settings)
 
     render_download_button(
         settings=settings,
-        constraints=constraints,
-        date_master_df=date_master_df,
-        facility_targets_raw_df=facility_targets_raw_df,
+        constraint_detail=constraint_detail,
+        date_details=date_details,
+        facility_daily_target_details=facility_daily_target_details,
     )
 
 
