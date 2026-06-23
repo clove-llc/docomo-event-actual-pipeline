@@ -80,6 +80,7 @@ target/
 # =========================
 streamlit/**/.streamlit/secrets.toml
 streamlit/uploader/data
+.streamlit/secrets.toml
 
 # =========================
 # Snowflake キーペア（秘密鍵は絶対にコミットしない）

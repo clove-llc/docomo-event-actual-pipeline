@@ -1,0 +1,19 @@
+definition_version: 2
+
+entities:
+  event_plan_workbook_builder:
+    type: streamlit
+    identifier: EVENT_PLAN_WORKBOOK_BUILDER
+    query_warehouse: STREAMLIT_WH
+    main_file: app.py
+    artifacts:
+      - app.py
+      - config.py
+      - entities.py
+      - snowflake_repository.py
+      - utils.py
+      - environment.yml
+      - src: builders/*
+        dest: builders/
+      - src: templates/*.xlsx
+        dest: templates/
