@@ -34,16 +34,6 @@ DATE_MASTER = DatasetSpec(
     caption="日付マスタ（「日付マスタ」シート）を RAW_DATE_MASTER へ CREATE OR REPLACE",
 )
 
-SEASONAL = DatasetSpec(
-    label="季節指数マスタ",
-    table="RAW_FACILITY_SEASONAL_DAILY",
-    layout="wide",
-    sheet="01_日別施設別（SENSE）", header_row=1, first_col=0, fixed_n=3, key_col="施設名",
-    type_map={"施設コード": "NUMBER(38,0)", "施設名": "VARCHAR", "年間平均値": "FLOAT"},
-    default_type="VARCHAR", date_col_type="NUMBER(38,0)",
-    caption="季節指数マスタの「01_日別施設別（SENSE）」を RAW_FACILITY_SEASONAL_DAILY へ",
-)
-
 FACILITY_MASTER = DatasetSpec(
     label="施設マスタ",
     table="RAW_FACILITY_MASTER",
@@ -64,13 +54,13 @@ NAME_MAPPINGS = DatasetSpec(
 )
 
 FOOT_TRAFFIC = DatasetSpec(
-    label="人流・デシルマスタ",
+    label="日別人流データ",
     table="RAW_FACILITY_FOOT_TRAFFIC_DAILY",
     layout="wide",
     sheet="01_日別施設別（SENSE）", header_row=0, first_col=0, fixed_n=3, key_col="施設名",
     type_map={"施設コード": "NUMBER(38,0)", "施設名": "VARCHAR", "年間平均値": "FLOAT"},
     default_type="VARCHAR", date_col_type="NUMBER(38,0)",
-    caption="人流・デシルマスタの「01_日別施設別（SENSE）」を RAW_FACILITY_FOOT_TRAFFIC_DAILY へ",
+    caption="日別人流データの「01_日別施設別（SENSE）」を RAW_FACILITY_FOOT_TRAFFIC_DAILY へ",
 )
 
 KDDI_FOOT_TRAFFIC = DatasetSpec(
@@ -96,6 +86,6 @@ DATE_FLAG = DatasetSpec(
 )
 
 DATASETS = {s.label: s for s in [
-    ACTUALS, DATE_MASTER, SEASONAL, FACILITY_MASTER, NAME_MAPPINGS, FOOT_TRAFFIC,
+    ACTUALS, DATE_MASTER, FACILITY_MASTER, NAME_MAPPINGS, FOOT_TRAFFIC,
     KDDI_FOOT_TRAFFIC, DATE_FLAG,
 ]}
