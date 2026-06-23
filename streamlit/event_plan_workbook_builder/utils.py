@@ -19,8 +19,11 @@ def to_date(value: Any) -> date:
     return date.fromisoformat(str(value)[:10])
 
 
-def parse_int(value: str) -> int | None:
+def parse_int(value: str | None) -> int | None:
     """カンマ付き数値文字列を int に変換する。空欄は None。"""
+    if not value:
+        return None
+
     normalized = value.replace(",", "").strip()
 
     if normalized == "":

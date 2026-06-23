@@ -16,6 +16,11 @@ class ConstraintDetail:
 
         return round(self.condition_cost / self.target_pi)
 
+@dataclass(frozen=True)
+class RegionalOfficeScheduleConstraint:
+    regional_office: str
+    daily_event_limit: int
+    operating_days: str
 
 @dataclass(frozen=True)
 class FacilityDetail:
@@ -26,15 +31,8 @@ class FacilityDetail:
     branch_office: str | None
     cpa: int | None
     is_excluded: bool | None
-    monthly_event_limit: int | None
-    available_weekdays: str | None
-
-
-@dataclass(frozen=True)
-class DateDetail:
-    date: date
-    weekday_name_and_week_number_monthly: str
-    date_flag: str
+    monthly_event_limit: str | None
+    operating_days: str | None
 
 
 @dataclass(frozen=True)
@@ -52,3 +50,10 @@ class FacilityDailyTargetDetail:
 
     def search_key(self) -> str:
         return self.facility_name + str(self.date)
+
+
+@dataclass(frozen=True)
+class DateDetail:
+    date: date
+    weekday_name_and_week_number_monthly: str
+    date_flag: str

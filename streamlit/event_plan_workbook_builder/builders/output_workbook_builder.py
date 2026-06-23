@@ -76,7 +76,7 @@ class OutputWorkbookBuilder:
             ws[f"F{row_idx}"] = facility_detail.cpa
             ws[f"G{row_idx}"] = facility_detail.is_excluded
             ws[f"H{row_idx}"] = facility_detail.monthly_event_limit
-            ws[f"I{row_idx}"] = facility_detail.available_weekdays
+            ws[f"I{row_idx}"] = facility_detail.operating_days
 
     def _write_date_header(self, ws: Worksheet, start_col: int = 10) -> None:
         for col_offset, date_detail in enumerate(self.date_details):

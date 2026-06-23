@@ -4,7 +4,7 @@ import streamlit as st
 from typing import Any, cast
 
 from config import SNOWFLAKE_CACHE_TTL_SECONDS
-from entities import DateDetail, FacilityDailyTargetDetail
+from entities import DateDetail, FacilityDailyTargetDetail, FacilityDetail, RegionalOfficeScheduleConstraint
 from utils import to_date
 
 
@@ -39,6 +39,27 @@ def fetch_benchmark_period_keys() -> list[str]:
 
     return [str(row[0]) for row in rows]
 
+@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
+def fetch_regional_office_schedule_constraints() -> list[RegionalOfficeScheduleConstraint]:
+    """Snowflakeから支社別スケジュール制限マスタの情報を取得する。"""
+    rows = _fetch_all(
+        """
+        SELECT
+            REGIONAL_OFFICE,
+            DAILY_EVENT_LIMIT,
+            OPERATING_DAYS
+        FROM STG.STG_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER
+        """
+    )
+
+    return [
+        RegionalOfficeScheduleConstraint(
+            regional_office=str(row[0]),
+            daily_event_limit=int(row[1]),
+            operating_days=str(row[2]),
+        )
+        for row in rows
+    ]
 
 @st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_facility_daily_target_details(
@@ -88,6 +109,51 @@ def fetch_facility_daily_target_details(
             cpa=int(row[7]),
             is_excluded=bool(row[8]),
             target_value=int(row[9]),
+        )
+        for row in rows
+    ]
+
+
+@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
+def fetch_facility_details(
+    regional_office_name: str,
+) -> list[FacilityDetail]:
+    """Snowflakeから指定された支社の施設詳細情報を取得する。"""
+    rows = _fetch_all(
+        """
+        SELECT
+            F_F_P_S.FACILITY_CODE,
+            F_F_P_S.FACILITY_NAME,
+            F_F_P_S.PO_LEVEL,
+            F_F_P_S.REGIONAL_OFFICE,
+            F_F_P_S.BRANCH_OFFICE,
+            F_F_P_S.CPA,
+            F_F_P_S.IS_EXCLUDED,
+            F_S_C_M.MONTHLY_EVENT_LIMIT,
+            F_S_C_M.OPERATING_DAYS
+        FROM MART.FACT_FACILITY_PERFORMANCE_SLOTS AS F_F_P_S
+        LEFT JOIN STG.STG_FACILITY_SCHEDULE_CONSTRAINTS_MASTER AS F_S_C_M
+            ON F_F_P_S.FACILITY_CODE = F_S_C_M.FACILITY_CODE
+        WHERE REGIONAL_OFFICE = ?
+          AND HAS_TARGET_CPA
+        GROUP BY ALL
+        """,
+        [
+            regional_office_name,
+        ],
+    )
+
+    return [
+        FacilityDetail(
+            facility_code=int(row[0]),
+            facility_name=str(row[1]),
+            po_level=str(row[2]),
+            regional_office=str(row[3]),
+            branch_office=str(row[4]),
+            cpa=int(row[5]),
+            is_excluded=bool(row[6]),
+            monthly_event_limit=str(row[7]),
+            operating_days=str(row[8]),
         )
         for row in rows
     ]

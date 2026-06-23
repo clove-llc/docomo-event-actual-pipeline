@@ -16,12 +16,15 @@ from snowflake_repository import (
     fetch_benchmark_period_keys,
     fetch_date_master,
     fetch_facility_daily_target_details,
+    fetch_facility_details,
+    fetch_regional_office_schedule_constraints,
 )
 from entities import (
     ConstraintDetail,
     DateDetail,
     FacilityDailyTargetDetail,
     FacilityDetail,
+    RegionalOfficeScheduleConstraint,
 )
 from builders.input_workbook_builder import (
     InputWorkbookBuilder,
@@ -46,41 +49,10 @@ class PlanningSettings:
         return format_period(self.year, self.month)
 
 
-def build_facility_details(
-    facility_daily_target_details: list[FacilityDailyTargetDetail],
-) -> list[FacilityDetail]:
-    facility_details: list[FacilityDetail] = []
-    seen_keys: set[int | str] = set()
-
-    for detail in facility_daily_target_details:
-        key = detail.facility_code
-
-        if key in seen_keys:
-            continue
-
-        seen_keys.add(key)
-
-        facility_details.append(
-            FacilityDetail(
-                facility_code=detail.facility_code,
-                facility_name=detail.facility_name,
-                po_level=detail.po_level,
-                regional_office=detail.regional_office,
-                branch_office=detail.branch_office,
-                cpa=detail.cpa,
-                is_excluded=detail.is_excluded,
-                monthly_event_limit=None,
-                available_weekdays=None,
-            )
-        )
-
-    return facility_details
-
-
 def validate_constraint_inputs(
     *,
-    monthly_event_count_text: str,
-    monthly_event_count: int | None,
+    daily_event_limit_text: str | None,
+    daily_event_limit: int | None,
     target_pi_text: str,
     target_pi: int | None,
     condition_cost_text: str,
@@ -88,7 +60,9 @@ def validate_constraint_inputs(
 ) -> list[str]:
     errors: list[str] = []
 
-    if monthly_event_count_text.strip() != "" and monthly_event_count is None:
+    if not daily_event_limit_text or (
+        daily_event_limit_text.strip() != "" and daily_event_limit is None
+    ):
         errors.append("稼働ラインは整数で入力してください。")
 
     if target_pi_text.strip() != "" and target_pi is None:
@@ -133,6 +107,30 @@ def load_facility_daily_target_details(
     )
 
     return facility_daily_target_details
+
+
+def load_facility_details(
+    settings: PlanningSettings,
+) -> list[FacilityDetail]:
+    st.subheader("対象支社の施設情報")
+
+    try:
+        facility_details = fetch_facility_details(settings.regional_office_name)
+    except Exception as exc:  # noqa: BLE001
+        st.error("Snowflakeから対象支社の施設情報を取得できませんでした。")
+        st.exception(exc)
+        st.stop()
+
+    st.write(
+        f"Snowflakeから「{settings.regional_office_name}」の施設情報を "
+        f"{len(facility_details):,} 件取得しました。"
+    )
+    render_dataframe_preview(
+        "取得した施設情報を確認する",
+        pd.DataFrame([asdict(detail) for detail in facility_details]),
+    )
+
+    return facility_details
 
 
 def load_date_details(settings: PlanningSettings) -> list[DateDetail]:
@@ -221,29 +219,41 @@ def render_settings_section() -> PlanningSettings:
     )
 
 
-def render_constraint_section(proposal_period: str) -> ConstraintDetail:
+def render_constraint_section(
+    settings: PlanningSettings,
+    regional_office_schedule_constraints: list[RegionalOfficeScheduleConstraint],
+) -> ConstraintDetail:
     st.subheader("制約条件")
 
-    col_proposal_period, col_monthly_event_count, col_weekday_pattern = st.columns(3)
+    selected_constraint = next(
+        (
+            c
+            for c in regional_office_schedule_constraints
+            if c.regional_office == settings.regional_office_name
+        ),
+        None,
+    )
+
+    col_proposal_period, col_daily_event_limit, col_weekday_pattern = st.columns(3)
 
     with col_proposal_period:
         st.text_input(
             "提案期間",
-            value=proposal_period,
+            value=settings.proposal_period,
             disabled=True,
         )
 
-    with col_monthly_event_count:
-        monthly_event_count_text = st.text_input(
-            "稼働ライン",
-            value="",
-            placeholder="例: 113",
+    with col_daily_event_limit:
+        daily_event_limit_text = st.text_input(
+            "日当たり稼働ライン",
+            value=selected_constraint.daily_event_limit if selected_constraint else "",
+            placeholder="例: 8",
         )
 
     with col_weekday_pattern:
         weekday_pattern = st.text_input(
             "稼働曜日",
-            value="",
+            value=selected_constraint.operating_days if selected_constraint else "",
             placeholder="例: 金～日",
         )
 
@@ -263,7 +273,7 @@ def render_constraint_section(proposal_period: str) -> ConstraintDetail:
             placeholder="例: 247,543,639",
         )
 
-    monthly_event_count = parse_int(monthly_event_count_text)
+    daily_event_limit = parse_int(daily_event_limit_text)
     target_pi = parse_int(target_pi_text)
     condition_cost = parse_int(condition_cost_text)
     target_cpa = calculate_cpa(condition_cost, target_pi)
@@ -277,8 +287,8 @@ def render_constraint_section(proposal_period: str) -> ConstraintDetail:
         )
 
     errors = validate_constraint_inputs(
-        monthly_event_count_text=monthly_event_count_text,
-        monthly_event_count=monthly_event_count,
+        daily_event_limit_text=daily_event_limit_text,
+        daily_event_limit=daily_event_limit,
         target_pi_text=target_pi_text,
         target_pi=target_pi,
         condition_cost_text=condition_cost_text,
@@ -289,8 +299,8 @@ def render_constraint_section(proposal_period: str) -> ConstraintDetail:
         st.error(error)
 
     return ConstraintDetail(
-        proposal_period=proposal_period,
-        monthly_event_count=monthly_event_count,
+        proposal_period=settings.proposal_period,
+        monthly_event_count=daily_event_limit,
         weekday_pattern=weekday_pattern,
         target_pi=target_pi,
         condition_cost=condition_cost,
@@ -307,10 +317,9 @@ def render_download_button(
     settings: PlanningSettings,
     constraint_detail: ConstraintDetail,
     date_details: list[DateDetail],
+    facility_details: list[FacilityDetail],
     facility_daily_target_details: list[FacilityDailyTargetDetail],
 ) -> None:
-    facility_details = build_facility_details(facility_daily_target_details)
-
     disabled = (
         len(facility_details) == 0
         or len(date_details) == 0
@@ -402,7 +411,13 @@ def main() -> None:
     settings = render_settings_section()
 
     st.divider()
-    constraint_detail = render_constraint_section(settings.proposal_period)
+    regional_office_schedule_constraints = fetch_regional_office_schedule_constraints()
+    constraint_detail = render_constraint_section(
+        settings, regional_office_schedule_constraints
+    )
+
+    st.divider()
+    facility_details = load_facility_details(settings)
 
     st.divider()
     facility_daily_target_details = load_facility_daily_target_details(settings)
@@ -414,6 +429,7 @@ def main() -> None:
         settings=settings,
         constraint_detail=constraint_detail,
         date_details=date_details,
+        facility_details=facility_details,
         facility_daily_target_details=facility_daily_target_details,
     )
 
