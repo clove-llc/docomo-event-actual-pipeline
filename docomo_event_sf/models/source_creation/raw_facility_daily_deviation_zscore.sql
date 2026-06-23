@@ -19,7 +19,7 @@ with
 -- s1: 01_日別施設別（SENSE）を縦持ち化し、日付フラグを付与
 seasonal_src as (
     select t.*, object_construct(*) as obj
-    from {{ source('raw', 'RAW_FACILITY_SEASONAL_DAILY') }} t
+    from {{ source('raw', 'RAW_FACILITY_FOOT_TRAFFIC_DAILY') }} t
 ),
 seasonal_unpivoted as (
     select
