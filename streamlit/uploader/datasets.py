@@ -134,10 +134,10 @@ FACILITY_SCHEDULE_CONSTRAINT = DatasetSpec(
     layout="flat",
     sheet="施設別スケジュール制限マスタ",
     rename={
-        "施設コード": "facility_code",
-        "施設名": "facility_name",
-        "月当たりの開催上限": "monthly_event_limit",
-        "稼働曜日": "operating_days",
+        "施設コード": "FACILITY_CODE",
+        "施設名": "FACILITY_NAME",
+        "月当たりの開催上限": "MONTHLY_EVENT_LIMIT",
+        "稼働曜日": "OPERATING_DAYS",
     },
     type_map={
         "施設コード": "NUMBER",
@@ -154,9 +154,9 @@ REGIONAL_OFFICE_SCHEDULE_CONSTRAINT = DatasetSpec(
     layout="flat",
     sheet="支社別スケジュール制限マスタ",
     rename={
-        "支社名": "regional_office_name",
-        "稼働ライン（日当たり）": "daily_event_limit",
-        "稼働曜日": "operating_days",
+        "支社名": "REGIONAL_OFFICE_NAME",
+        "稼働ライン（日当たり）": "DAILY_EVENT_LIMIT",
+        "稼働曜日": "OPERATING_DAYS",
     },
     type_map={
         "支社名": "VARCHAR",
@@ -171,7 +171,7 @@ EXCLUDED_FACILITY = DatasetSpec(
     table="RAW_EXCLUDED_FACILITY_MASTER",
     layout="flat",
     sheet="除外対象施設マスタ",
-    rename={"施設名": "facility_name"},
+    rename={"施設名": "FACILITY_NAME"},
     type_map={"施設名": "VARCHAR"},
     caption="除外対象施設マスタの「除外対象施設マスタ」シート(A:A)を RAW_EXCLUDED_FACILITY_MASTER へ",
 )
@@ -181,7 +181,7 @@ TARGET_CPA = DatasetSpec(
     table="RAW_FACILITY_TARGET_CPA_MASTER",
     layout="flat",
     sheet="施設別目標CPAマスタ",
-    rename={"施設名": "facility_name", "CPA": "cpa"},
+    rename={"施設名": "FACILITY_NAME", "CPA": "CPA"},
     type_map={"施設名": "VARCHAR", "CPA": "NUMBER"},
     caption="施設別目標CPAマスタの「施設別目標CPAマスタ」シート(A:B)を RAW_FACILITY_TARGET_CPA_MASTER へ",
 )
