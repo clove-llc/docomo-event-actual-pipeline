@@ -107,6 +107,8 @@ calc as (
 )
 
 select
+    (benchmark_period_name || '_' || facility_name || '_' || date_flag || '_' || month || week_number_monthly) as normal_period_search_key,
+    (benchmark_period_name || '_' || facility_name || '_' || date_flag) as special_period_search_key,
     benchmark_period_key,
     benchmark_period_name,
     period_start_date,
@@ -126,6 +128,7 @@ select
     standard_target,
     challenge_target,
     p50,
+    zsc as z_score,
     {{ round_bq('standard_target * zsc', 0) }} as standard_target_seasonal,
     {{ round_bq('challenge_target * zsc', 0) }} as challenge_target_seasonal,
     {{ round_bq('p50 * zsc', 0) }} as p50_seasonal
