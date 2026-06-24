@@ -154,7 +154,7 @@ REGIONAL_OFFICE_SCHEDULE_CONSTRAINT = DatasetSpec(
     layout="flat",
     sheet="支社別スケジュール制限マスタ",
     rename={
-        "支社名": "REGIONAL_OFFICE_NAME",
+        "支社名": "REGIONAL_OFFICE",
         "稼働ライン（日当たり）": "DAILY_EVENT_LIMIT",
         "稼働曜日": "OPERATING_DAYS",
     },
