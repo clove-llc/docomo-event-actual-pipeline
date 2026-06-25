@@ -67,19 +67,14 @@ def run_upload(ctx: LoadContext, table: str, fqtn: str, ddl: str, df: pd.DataFra
                 rows = exec_sql(f"SELECT COUNT(*) AS N FROM {fqtn}", session=ctx.session, conn=conn)
                 cnt = rows[0]["N"] if ctx.session is not None else rows[0][0]
 
-                st.write(f"アップロード完了: {cnt:,} 行 → {table}")
+                st.success(f"月次ロード完了: {cnt:,} 行 → {table}")
 
                 if table.startswith("RAW_FACILITY_ACTUALS"):
-                    st.write("RAW_FACILITY_ACTUALS を全年月統合テーブルとして再作成中...")
-
-                    actuals_cnt = create_raw_facility_actuals(
-                        ctx,
-                        conn=conn,
-                    )
-
-                    st.write(
-                        f"RAW_FACILITY_ACTUALS 作成完了: {actuals_cnt:,} 行"
-                    )
+                    try:
+                        actuals_cnt = create_raw_facility_actuals(ctx, conn=conn)
+                        st.success(f"統合テーブル再作成完了: {actuals_cnt:,} 行")
+                    except Exception as e:
+                        st.warning(f"月次ロードは成功。統合テーブル再作成のみ失敗: {e}")
 
                 status.update(
                     label=f"完了: {table}",
