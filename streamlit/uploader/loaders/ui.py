@@ -48,7 +48,7 @@ def create_raw_facility_actuals(ctx: LoadContext, conn=None) -> int:
     return rows[0]["N"] if ctx.session is not None else rows[0][0]
 
 
-def run_upload(ctx: LoadContext, table: str, fqtn: str, ddl: str, df: pd.DataFrame) -> None:
+def run_upload(ctx: LoadContext, table: str, fqtn: str, ddl: str, df: pd.DataFrame, month_mode: bool) -> None:
     """CREATE OR REPLACE TABLE → ロード（進捗を表示）。"""
     can_run = (ctx.session is not None or bool(ctx.cfg)) and bool(ctx.db) and bool(ctx.schema)
     if not can_run:
@@ -67,9 +67,9 @@ def run_upload(ctx: LoadContext, table: str, fqtn: str, ddl: str, df: pd.DataFra
                 rows = exec_sql(f"SELECT COUNT(*) AS N FROM {fqtn}", session=ctx.session, conn=conn)
                 cnt = rows[0]["N"] if ctx.session is not None else rows[0][0]
 
-                st.success(f"月次ロード完了: {cnt:,} 行 → {table}")
+                st.success(f"ロード完了: {cnt:,} 行 → {table}")
 
-                if table.startswith("RAW_FACILITY_ACTUALS"):
+                if month_mode:
                     try:
                         actuals_cnt = create_raw_facility_actuals(ctx, conn=conn)
                         st.success(f"統合テーブル再作成完了: {actuals_cnt:,} 行")
@@ -150,4 +150,4 @@ def render_dataset(ctx: LoadContext, spec: DatasetSpec) -> None:
         st.caption(spec.note)
 
     st.divider()
-    run_upload(ctx, table, fqtn, ddl, df)
+    run_upload(ctx, table, fqtn, ddl, df, spec.month_mode)
