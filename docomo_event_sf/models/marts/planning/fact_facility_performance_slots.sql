@@ -8,9 +8,15 @@ with planning_snapshot_all_period as (
     select
         facility_code,
         date_flag,
+        p25 as all_period_p25,
+        p50 as all_period_p50,
+        p60 as all_period_p60,
+        p70 as all_period_p70,
+        p75 as all_period_p75,
+        p90 as all_period_p90,
+        max_performance as all_period_max_performance,
         standard_target as all_period_standard_target,
         challenge_target as all_period_challenge_target,
-        p50 as all_period_p50
     from {{ ref('int_facility_event_planning_snapshot') }}
     where benchmark_period_key = '2025_04_2026_03'
 ),
@@ -48,18 +54,41 @@ calc as (
         b.branch_office,
         f_e_p_s.decile_rank,
         f_e_p_s.avg_actual,
-        f_e_p_s.p25,
-        f_e_p_s.p70,
-        f_e_p_s.p75,
-        f_e_p_s.p90,
-        f_e_p_s.max_performance,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p25
+            else f_e_p_s.p25
+        end as p25,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p50
+            else f_e_p_s.p50
+        end as p50,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p60
+            else f_e_p_s.p60
+        end as p60,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p70
+            else f_e_p_s.p70
+        end as p70,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p75
+            else f_e_p_s.p75
+        end as p75,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p90
+            else f_e_p_s.p90
+        end as p90,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_max_performance
+            else f_e_p_s.max_performance
+        end as max_performance,
         b.date,
         b.month,
         b.week_number_monthly,
         b.date_flag,
         i_f_t.cpa,
         i_f_t.cpa is not null as has_target_cpa,
-        (s_e_f_m.facility_name is not null or i_f_t.cpa > 100000) as is_excluded,
+        (s_e_f_m.facility_name is not null or coalesce(i_f_t.cpa > 100000, false)) as is_excluded,
         case
             when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_standard_target
             else f_e_p_s.standard_target
@@ -68,10 +97,6 @@ calc as (
             when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_challenge_target
             else f_e_p_s.challenge_target
         end as challenge_target,
-        case
-            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p50
-            else f_e_p_s.p50
-        end as p50,
         coalesce(
             i_f_m_w_d_z.avg_z_score,
             i_f_m_d_z.avg_z_score,
@@ -114,7 +139,7 @@ calc as (
 )
 
 select
-    (benchmark_period_name || '_' || facility_name || '_' || date_flag || '_' || month || week_number_monthly) as normal_period_search_key,
+    (benchmark_period_name || '_' || facility_name || '_' || date_flag || '_' || month || '_' || week_number_monthly) as normal_period_search_key,
     (benchmark_period_name || '_' || facility_name || '_' || date_flag) as special_period_search_key,
     benchmark_period_key,
     benchmark_period_name,
@@ -128,6 +153,8 @@ select
     decile_rank,
     avg_actual,
     p25,
+    p50,
+    p60,
     p70,
     p75,
     p90,
@@ -141,9 +168,7 @@ select
     is_excluded,
     standard_target,
     challenge_target,
-    p50,
     zsc as z_score,
     {{ round_bq('standard_target * zsc', 0) }} as standard_target_seasonal,
-    {{ round_bq('challenge_target * zsc', 0) }} as challenge_target_seasonal,
-    {{ round_bq('p50 * zsc', 0) }} as p50_seasonal
+    {{ round_bq('challenge_target * zsc', 0) }} as challenge_target_seasonal
 from calc
