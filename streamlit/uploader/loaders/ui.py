@@ -23,22 +23,13 @@ def yyyymm(sheet: str) -> str:
 
 CREATE_RAW_FACILITY_ACTUALS_SQL_FILE = Path(__file__).parent.parent / "sql" / "create_raw_facility_actuals.sql"
 
-def build_create_raw_facility_actuals_sql(ctx: LoadContext) -> str:
-    sql = CREATE_RAW_FACILITY_ACTUALS_SQL_FILE.read_text(encoding="utf-8")
-
-    sql = sql.replace(
-        "__RAW_DATABASE_LITERAL__",
-        ctx.db,
-    )
-    sql = sql.replace(
-        "__RAW_SCHEMA_LITERAL__",
-        ctx.schema,
-    )
-
-    return sql
-
 def create_raw_facility_actuals(ctx: LoadContext, conn=None) -> int:
-    sql = build_create_raw_facility_actuals_sql(ctx)
+    sql = CREATE_RAW_FACILITY_ACTUALS_SQL_FILE.read_text(encoding="utf-8")
+    for placeholder, value in {
+        "__RAW_DATABASE_LITERAL__": ctx.db,
+        "__RAW_SCHEMA_LITERAL__": ctx.schema,
+    }.items():
+        sql = sql.replace(placeholder, value)
 
     exec_sql(
         sql,
