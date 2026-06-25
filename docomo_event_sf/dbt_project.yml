@@ -23,16 +23,16 @@ models:
     # RAW にアップロード済みの生データ（RAW_*）から計算し、BQ raw と同名のテーブルを RAW に作る。
     source_creation:
       +schema: raw       # → HARATO.RAW
-      +materialized: table
+      +materialized: view
     staging:
       +schema: stg       # → HARATO.STG
       +materialized: view
     intermediate:
       +schema: int       # → HARATO.INT
-      +materialized: table
+      +materialized: view
     marts:
       +schema: mart      # → HARATO.MART
-      +materialized: table
+      +materialized: view
     # dynamic_table 検証層: dbt-snowflake の materialized='dynamic_table' を検証する。
     # 既存の INT/MART を汚さないよう専用スキーマ HARATO.DYN に分離する。
     dynamic_table:
