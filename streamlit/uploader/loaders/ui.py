@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-
+from pathlib import Path
 import pandas as pd
 import streamlit as st
 
@@ -21,8 +21,34 @@ def yyyymm(sheet: str) -> str:
         return m.group(1) + m.group(2).zfill(2)
     return re.sub(r"\D", "", sheet)[:6]
 
+CREATE_RAW_FACILITY_ACTUALS_SQL_FILE = Path(__file__).parent.parent / "sql" / "create_raw_facility_actuals.sql"
 
-def run_upload(ctx: LoadContext, table: str, fqtn: str, ddl: str, df: pd.DataFrame) -> None:
+def create_raw_facility_actuals(ctx: LoadContext, conn=None) -> int:
+    sql = CREATE_RAW_FACILITY_ACTUALS_SQL_FILE.read_text(encoding="utf-8")
+    for placeholder, value in {
+        "__RAW_DATABASE_LITERAL__": ctx.db,
+        "__RAW_SCHEMA_LITERAL__": ctx.schema,
+    }.items():
+        sql = sql.replace(placeholder, value)
+
+    exec_sql(
+        sql,
+        session=ctx.session,
+        conn=conn,
+    )
+
+    fqtn = ".".join(x for x in [ctx.db, ctx.schema, "RAW_FACILITY_ACTUALS"] if x)
+
+    rows = exec_sql(
+        f"SELECT COUNT(*) AS N FROM {fqtn}",
+        session=ctx.session,
+        conn=conn,
+    )
+
+    return rows[0]["N"] if ctx.session is not None else rows[0][0]
+
+
+def run_upload(ctx: LoadContext, table: str, fqtn: str, ddl: str, df: pd.DataFrame, month_mode: bool) -> None:
     """CREATE OR REPLACE TABLE → ロード（進捗を表示）。"""
     can_run = (ctx.session is not None or bool(ctx.cfg)) and bool(ctx.db) and bool(ctx.schema)
     if not can_run:
@@ -40,8 +66,22 @@ def run_upload(ctx: LoadContext, table: str, fqtn: str, ddl: str, df: pd.DataFra
                 load_dataframe(df, table, ctx.db, ctx.schema, session=ctx.session, conn=conn)
                 rows = exec_sql(f"SELECT COUNT(*) AS N FROM {fqtn}", session=ctx.session, conn=conn)
                 cnt = rows[0]["N"] if ctx.session is not None else rows[0][0]
-                status.update(label=f"完了: {cnt:,} 行 → {table}", state="complete", expanded=False)
-                st.success(f"完了: {len(df):,} 行 → `{fqtn}`")
+
+                st.success(f"ロード完了: {cnt:,} 行 → {table}")
+
+                if month_mode:
+                    try:
+                        actuals_cnt = create_raw_facility_actuals(ctx, conn=conn)
+                        st.success(f"統合テーブル再作成完了: {actuals_cnt:,} 行")
+                    except Exception as e:
+                        st.warning(f"月次ロードは成功。統合テーブル再作成のみ失敗: {e}")
+
+                status.update(
+                    label=f"完了: {table}",
+                    state="complete",
+                    expanded=False,
+                )
+                st.success(f"完了: `{fqtn}`")
             except Exception as e:  # noqa: BLE001
                 status.update(label="アップロード失敗", state="error")
                 st.error(f"アップロード失敗: {e}")
@@ -110,4 +150,4 @@ def render_dataset(ctx: LoadContext, spec: DatasetSpec) -> None:
         st.caption(spec.note)
 
     st.divider()
-    run_upload(ctx, table, fqtn, ddl, df)
+    run_upload(ctx, table, fqtn, ddl, df, spec.month_mode)
