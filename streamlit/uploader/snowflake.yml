@@ -13,7 +13,7 @@ entities:
       - deploy.py
       - sf_common.py
       - environment.yml
-      - src: loaders/*
+      - src: loaders/*.py
         dest: loaders/
       - src: sql/*.sql
         dest: sql/
