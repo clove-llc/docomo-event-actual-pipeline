@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 import pandas as pd
 import streamlit as st
 
@@ -21,10 +20,10 @@ def yyyymm(sheet: str) -> str:
         return m.group(1) + m.group(2).zfill(2)
     return re.sub(r"\D", "", sheet)[:6]
 
-CREATE_RAW_FACILITY_ACTUALS_SQL_FILE = Path(__file__).parent.parent / "sql" / "create_raw_facility_actuals.sql"
+from sql.create_raw_facility_actuals import SQL as _CREATE_RAW_FACILITY_ACTUALS_SQL
 
 def create_raw_facility_actuals(ctx: LoadContext, conn=None) -> int:
-    sql = CREATE_RAW_FACILITY_ACTUALS_SQL_FILE.read_text(encoding="utf-8")
+    sql = _CREATE_RAW_FACILITY_ACTUALS_SQL
     for placeholder, value in {
         "__RAW_DATABASE_LITERAL__": ctx.db,
         "__RAW_SCHEMA_LITERAL__": ctx.schema,
