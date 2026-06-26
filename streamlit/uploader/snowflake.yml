@@ -4,6 +4,7 @@ entities:
   uploader_xlsx:
     type: streamlit
     identifier: UPLOADER_XLSX
+    stage: STREAMLIT_STAGE
     query_warehouse: STREAMLIT_WH
     main_file: app.py
     artifacts:
