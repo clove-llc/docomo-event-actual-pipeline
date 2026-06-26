@@ -54,40 +54,48 @@ def run_upload(ctx: LoadContext, table: str, fqtn: str, ddl: str, df: pd.DataFra
     if not can_run:
         st.info("※ 認証情報・Database・Schema が必要です。")
     if st.button("🚀 CREATE OR REPLACE TABLE してアップロード", type="primary", disabled=not can_run):
-        with st.status(f"実行中... {table} を作り直してロードしています", expanded=True) as status:
-            conn = None
-            try:
-                if ctx.session is None:
-                    st.write("Snowflake に接続中...")
-                    conn = connect_snowflake(ctx.cfg, ctx.db, ctx.schema)
-                st.write(f"CREATE OR REPLACE TABLE {table} を実行中...")
-                exec_sql(ddl, session=ctx.session, conn=conn)
-                st.write(f"{len(df):,} 行をロード中...")
-                load_dataframe(df, table, ctx.db, ctx.schema, session=ctx.session, conn=conn)
-                rows = exec_sql(f"SELECT COUNT(*) AS N FROM {fqtn}", session=ctx.session, conn=conn)
-                cnt = rows[0]["N"] if ctx.session is not None else rows[0][0]
+        progress = st.empty()
 
+        conn = None
+        try:
+            if ctx.session is None:
+                progress.info("Snowflake に接続中...")
+                conn = connect_snowflake(ctx.cfg, ctx.db, ctx.schema)
+                progress.empty()
+
+            progress.info(f"CREATE OR REPLACE TABLE {table} を実行中...")
+            exec_sql(ddl, session=ctx.session, conn=conn)
+            progress.empty()
+
+            progress.info(f"{len(df):,} 行をロード中...")
+            load_dataframe(df, table, ctx.db, ctx.schema, session=ctx.session, conn=conn)
+            progress.empty()
+
+            rows = exec_sql(f"SELECT COUNT(*) AS N FROM {fqtn}", session=ctx.session, conn=conn)
+            cnt = rows[0]["N"] if ctx.session is not None else rows[0][0]
+
+            if month_mode:
+                st.success(f"月次テーブルの作成完了: {cnt:,} 行 → {table}")
+
+                try:
+                    progress.info("統合テーブルを作成中...")
+                    actuals_count = create_raw_facility_actuals(ctx, conn=conn)
+                    progress.empty()
+
+                    st.success(f"統合テーブルの作成完了: {actuals_count:,} 行 → RAW_FACILITY_ACTUALS")
+                except Exception as e:
+                    progress.empty()
+                    st.warning(f"月次テーブルの作成は完了。統合テーブルの作成のみ失敗: {e}")
+            else:
                 st.success(f"ロード完了: {cnt:,} 行 → {table}")
 
-                if month_mode:
-                    try:
-                        actuals_cnt = create_raw_facility_actuals(ctx, conn=conn)
-                        st.success(f"統合テーブル再作成完了: {actuals_cnt:,} 行")
-                    except Exception as e:
-                        st.warning(f"月次ロードは成功。統合テーブル再作成のみ失敗: {e}")
+        except Exception as e:  # noqa: BLE001
+            progress.empty()
+            st.error(f"アップロード失敗: {e}")
 
-                status.update(
-                    label=f"完了: {table}",
-                    state="complete",
-                    expanded=False,
-                )
-                st.success(f"完了: `{fqtn}`")
-            except Exception as e:  # noqa: BLE001
-                status.update(label="アップロード失敗", state="error")
-                st.error(f"アップロード失敗: {e}")
-            finally:
-                if conn is not None:
-                    conn.close()
+        finally:
+            if conn is not None:
+                conn.close()
 
 
 def _resolve_sheet_and_table(spec: DatasetSpec, xls: pd.ExcelFile):
