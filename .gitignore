@@ -79,6 +79,7 @@ target/
 # Streamlit secrets
 # =========================
 streamlit/**/.streamlit/secrets.toml
+streamlit/**/output/
 streamlit/uploader/data
 .streamlit/secrets.toml
 
