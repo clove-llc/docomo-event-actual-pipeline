@@ -1,0 +1,177 @@
+
+  create or replace   view HARATO.MART.fact_facility_performance_slots
+  
+  
+  
+  
+  as (
+    with planning_snapshot_all_period as (
+    select
+        facility_code,
+        date_flag,
+        p25 as all_period_p25,
+        p50 as all_period_p50,
+        p60 as all_period_p60,
+        p70 as all_period_p70,
+        p75 as all_period_p75,
+        p90 as all_period_p90,
+        max_performance as all_period_max_performance,
+        standard_target as all_period_standard_target,
+        challenge_target as all_period_challenge_target,
+    from HARATO.INT.int_facility_event_planning_snapshot
+    where benchmark_period_key = '2025_04_2026_03'
+),
+
+base as (
+    select
+        p.benchmark_period_key,
+        p.benchmark_period_name,
+        p.period_start_date,
+        p.period_end_date,
+        s_f_m.facility_code,
+        s_f_m.facility_name,
+        s_f_m.po_level,
+        s_f_m.regional_office,
+        s_f_m.branch_office,
+        s_d_m.date,
+        s_d_m.month,
+        s_d_m.week_number_monthly,
+        s_d_m.date_flag
+    from HARATO.STG.stg_facility_master as s_f_m
+    cross join HARATO.STG.stg_date_master as s_d_m
+    cross join HARATO.INT.int_benchmark_periods as p
+),
+
+calc as (
+    select
+        b.benchmark_period_key,
+        b.benchmark_period_name,
+        b.period_start_date,
+        b.period_end_date,
+        b.facility_code,
+        b.facility_name,
+        b.po_level,
+        b.regional_office,
+        b.branch_office,
+        f_e_p_s.decile_rank,
+        f_e_p_s.avg_actual,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p25
+            else f_e_p_s.p25
+        end as p25,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p50
+            else f_e_p_s.p50
+        end as p50,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p60
+            else f_e_p_s.p60
+        end as p60,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p70
+            else f_e_p_s.p70
+        end as p70,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p75
+            else f_e_p_s.p75
+        end as p75,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_p90
+            else f_e_p_s.p90
+        end as p90,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_max_performance
+            else f_e_p_s.max_performance
+        end as max_performance,
+        b.date,
+        b.month,
+        b.week_number_monthly,
+        b.date_flag,
+        i_f_t.cpa,
+        i_f_t.cpa is not null as has_target_cpa,
+        (s_e_f_m.facility_name is not null or coalesce(i_f_t.cpa > 100000, false)) as is_excluded,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_standard_target
+            else f_e_p_s.standard_target
+        end as standard_target,
+        case
+            when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_challenge_target
+            else f_e_p_s.challenge_target
+        end as challenge_target,
+        coalesce(
+            i_f_m_w_d_z.avg_z_score,
+            i_f_m_d_z.avg_z_score,
+            i_f_m_3h.avg_z_score,
+            i_f_m_d_g_z.avg_z_score
+        ) as zsc
+    from base as b
+    left join HARATO.INT.int_facility_event_planning_snapshot as f_e_p_s
+        on b.benchmark_period_key = f_e_p_s.benchmark_period_key
+       and b.facility_code = f_e_p_s.facility_code
+       and b.date_flag = f_e_p_s.date_flag
+    left join planning_snapshot_all_period as f_e_p_s_all_period
+        on b.facility_code = f_e_p_s_all_period.facility_code
+       and b.date_flag = f_e_p_s_all_period.date_flag
+    -- 施設 × 月番号 × 週番号 × 日付フラグ
+    left join HARATO.INT.int_facility_monthly_weekday_dateflag_deviation_zscore as i_f_m_w_d_z
+        on b.facility_code = i_f_m_w_d_z.facility_code
+       and b.month = i_f_m_w_d_z.month
+       and b.week_number_monthly = i_f_m_w_d_z.week_number_monthly
+       and b.date_flag = i_f_m_w_d_z.date_flag
+    -- 施設 × 月番号 × 日付フラグ
+    left join HARATO.INT.int_facility_monthly_dateflag_deviation_zscore as i_f_m_d_z
+        on b.facility_code = i_f_m_d_z.facility_code
+       and b.month = i_f_m_d_z.month
+       and b.date_flag = i_f_m_d_z.date_flag
+    -- 施設 × 月 × 三連休
+    left join HARATO.INT.int_facility_monthly_dateflag_deviation_zscore as i_f_m_3h
+        on b.facility_code = i_f_m_3h.facility_code
+       and b.month = i_f_m_3h.month
+       and i_f_m_3h.date_flag = '三連休'
+    -- 施設 × 月 × 通常土日
+    left join HARATO.INT.int_facility_monthly_dateflag_deviation_zscore as i_f_m_d_g_z
+        on b.facility_code = i_f_m_d_g_z.facility_code
+       and b.month = i_f_m_d_g_z.month
+       and i_f_m_d_g_z.date_flag = '通常土日'
+    left join HARATO.INT.int_facility_target_cpa_by_facility AS i_f_t
+        on b.facility_name = i_f_t.facility_name
+    left join HARATO.STG.stg_excluded_facility_master AS s_e_f_m
+        on b.facility_name = s_e_f_m.facility_name
+)
+
+select
+    (benchmark_period_name || '_' || facility_name || '_' || date_flag || '_' || month || '_' || week_number_monthly) as normal_period_search_key,
+    (benchmark_period_name || '_' || facility_name || '_' || date_flag) as special_period_search_key,
+    benchmark_period_key,
+    benchmark_period_name,
+    period_start_date,
+    period_end_date,
+    facility_code,
+    facility_name,
+    po_level,
+    regional_office,
+    branch_office,
+    decile_rank,
+    avg_actual,
+    p25,
+    p50,
+    p60,
+    p70,
+    p75,
+    p90,
+    max_performance,
+    date,
+    month,
+    week_number_monthly,
+    date_flag,
+    cpa,
+    has_target_cpa,
+    is_excluded,
+    standard_target,
+    challenge_target,
+    zsc as z_score,
+    round(cast((standard_target * zsc) as number(38, 18)), 0) as standard_target_seasonal,
+    round(cast((challenge_target * zsc) as number(38, 18)), 0) as challenge_target_seasonal
+from calc
+  );
+
