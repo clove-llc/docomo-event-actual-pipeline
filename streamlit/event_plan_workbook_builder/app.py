@@ -115,7 +115,12 @@ def load_facility_details(
     st.subheader("対象支社の施設情報")
 
     try:
-        facility_details = fetch_facility_details(settings.regional_office_name)
+        facility_details = fetch_facility_details(
+            settings.benchmark_period_key,
+            settings.year,
+            settings.month,
+            settings.regional_office_name,
+        )
     except Exception as exc:  # noqa: BLE001
         st.error("Snowflakeから対象支社の施設情報を取得できませんでした。")
         st.exception(exc)

@@ -33,6 +33,15 @@ class FacilityDetail:
     is_excluded: bool | None
     monthly_event_limit: str | None
     operating_days: str | None
+    avg_weekday_standard_target_seasonal: int | None
+    avg_regular_weekend_standard_target_seasonal: int | None
+    avg_three_day_holiday_standard_target_seasonal: int | None
+    avg_bridge_holiday_standard_target_seasonal: int | None
+    avg_gw_standard_target_seasonal: int | None
+    avg_obon_standard_target_seasonal: int | None
+    avg_new_year_standard_target_seasonal: int | None
+    avg_year_end_standard_target_seasonal: int | None
+    avg_black_friday_standard_target_seasonal: int | None
 
 
 @dataclass(frozen=True)
