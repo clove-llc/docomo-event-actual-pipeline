@@ -1,11 +1,38 @@
 from __future__ import annotations
 import streamlit as st
+import datetime
 
+from datetime import date
 from typing import Any, cast
 
 from config import SNOWFLAKE_CACHE_TTL_SECONDS
-from entities import DateDetail, FacilityDailyTargetDetail, FacilityDetail, RegionalOfficeScheduleConstraint
-from utils import to_date
+from entities import (
+    DateDetail,
+    FacilityDailyTargetDetail,
+    FacilityDetail,
+    RegionalOfficeScheduleConstraint,
+)
+
+def to_int_or_none(value) -> int | None:
+    return None if value is None else int(value)
+
+
+def to_str_or_none(value) -> str | None:
+    return None if value is None else str(value)
+
+
+def to_bool_or_none(value) -> bool | None:
+    return None if value is None else bool(value)
+
+
+def to_date(value: Any) -> date:
+    if isinstance(value, datetime.datetime):
+        return value.date()
+
+    if isinstance(value, date):
+        return value
+
+    return date.fromisoformat(str(value)[:10])
 
 
 def _fetch_all(
@@ -39,18 +66,19 @@ def fetch_benchmark_period_keys() -> list[str]:
 
     return [str(row[0]) for row in rows]
 
+
 @st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
-def fetch_regional_office_schedule_constraints() -> list[RegionalOfficeScheduleConstraint]:
+def fetch_regional_office_schedule_constraints() -> (
+    list[RegionalOfficeScheduleConstraint]
+):
     """Snowflakeから支社別スケジュール制限マスタの情報を取得する。"""
-    rows = _fetch_all(
-        """
+    rows = _fetch_all("""
         SELECT
             REGIONAL_OFFICE,
             DAILY_EVENT_LIMIT,
             OPERATING_DAYS
         FROM STG.STG_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER
-        """
-    )
+        """)
 
     return [
         RegionalOfficeScheduleConstraint(
@@ -60,6 +88,7 @@ def fetch_regional_office_schedule_constraints() -> list[RegionalOfficeScheduleC
         )
         for row in rows
     ]
+
 
 @st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_facility_daily_target_details(
@@ -103,11 +132,11 @@ def fetch_facility_daily_target_details(
             facility_name=str(row[1]),
             po_level=str(row[2]),
             regional_office=str(row[3]),
-            branch_office=str(row[4]),
+            branch_office=to_str_or_none(row[4]),
             date=to_date(row[5]),
             date_flag=str(row[6]),
-            cpa=int(row[7]),
-            is_excluded=bool(row[8]),
+            cpa=to_int_or_none(row[7]),
+            is_excluded=to_bool_or_none(row[8]),
             target_value=int(row[9]),
         )
         for row in rows
@@ -116,6 +145,9 @@ def fetch_facility_daily_target_details(
 
 @st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_facility_details(
+    benchmark_period_key: str,
+    year: int,
+    month: int,
     regional_office_name: str,
 ) -> list[FacilityDetail]:
     """Snowflakeから指定された支社の施設詳細情報を取得する。"""
@@ -130,15 +162,39 @@ def fetch_facility_details(
             F_F_P_S.CPA,
             F_F_P_S.IS_EXCLUDED,
             F_S_C_M.MONTHLY_EVENT_LIMIT,
+            F_S_C_M.OPERATING_DAYS,
+            ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = '平日' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_weekday_standard_target_seasonal,
+            ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = '通常土日' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_regular_weekend_standard_target_seasonal,
+            ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = '三連休' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_three_day_holiday_standard_target_seasonal,
+            ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = '飛び石祝日' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_bridge_holiday_standard_target_seasonal,
+            ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = 'GW' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_gw_standard_target_seasonal,
+            ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = 'お盆' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_obon_standard_target_seasonal,
+            ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = '正月' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_new_year_standard_target_seasonal,
+            ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = '年末' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_year_end_standard_target_seasonal,
+            ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = 'ブラックフライデー' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_black_friday_standard_target_seasonal
+        FROM
+            MART.FACT_FACILITY_PERFORMANCE_SLOTS AS F_F_P_S
+            LEFT JOIN STG.STG_FACILITY_SCHEDULE_CONSTRAINTS_MASTER AS F_S_C_M ON F_F_P_S.FACILITY_CODE = F_S_C_M.FACILITY_CODE
+        WHERE F_F_P_S.BENCHMARK_PERIOD_KEY = ?
+            AND EXTRACT(YEAR FROM F_F_P_S.DATE) = ?
+            AND EXTRACT(MONTH FROM F_F_P_S.DATE) = ?
+            AND F_F_P_S.REGIONAL_OFFICE = ?
+            AND F_F_P_S.HAS_TARGET_CPA = TRUE
+        GROUP BY
+            F_F_P_S.FACILITY_CODE,
+            F_F_P_S.FACILITY_NAME,
+            F_F_P_S.PO_LEVEL,
+            F_F_P_S.REGIONAL_OFFICE,
+            F_F_P_S.BRANCH_OFFICE,
+            F_F_P_S.CPA,
+            F_F_P_S.IS_EXCLUDED,
+            F_S_C_M.MONTHLY_EVENT_LIMIT,
             F_S_C_M.OPERATING_DAYS
-        FROM MART.FACT_FACILITY_PERFORMANCE_SLOTS AS F_F_P_S
-        LEFT JOIN STG.STG_FACILITY_SCHEDULE_CONSTRAINTS_MASTER AS F_S_C_M
-            ON F_F_P_S.FACILITY_CODE = F_S_C_M.FACILITY_CODE
-        WHERE REGIONAL_OFFICE = ?
-          AND HAS_TARGET_CPA
-        GROUP BY ALL
         """,
         [
+            benchmark_period_key,
+            year,
+            month,
             regional_office_name,
         ],
     )
@@ -149,11 +205,20 @@ def fetch_facility_details(
             facility_name=str(row[1]),
             po_level=str(row[2]),
             regional_office=str(row[3]),
-            branch_office=str(row[4]),
-            cpa=int(row[5]),
-            is_excluded=bool(row[6]),
-            monthly_event_limit=str(row[7]),
-            operating_days=str(row[8]),
+            branch_office=to_str_or_none(row[4]),
+            cpa=to_int_or_none(row[5]),
+            is_excluded=to_bool_or_none(row[6]),
+            monthly_event_limit=to_str_or_none(row[7]),
+            operating_days=to_str_or_none(row[8]),
+            avg_weekday_standard_target_seasonal=to_int_or_none(row[9]),
+            avg_regular_weekend_standard_target_seasonal=to_int_or_none(row[10]),
+            avg_three_day_holiday_standard_target_seasonal=to_int_or_none(row[11]),
+            avg_bridge_holiday_standard_target_seasonal=to_int_or_none(row[12]),
+            avg_gw_standard_target_seasonal=to_int_or_none(row[13]),
+            avg_obon_standard_target_seasonal=to_int_or_none(row[14]),
+            avg_new_year_standard_target_seasonal=to_int_or_none(row[15]),
+            avg_year_end_standard_target_seasonal=to_int_or_none(row[16]),
+            avg_black_friday_standard_target_seasonal=to_int_or_none(row[17]),
         )
         for row in rows
     ]

@@ -1,22 +1,8 @@
 from __future__ import annotations
 
-import datetime
 import calendar
 
-from datetime import date
-from typing import Any
-
 from entities import FacilityDetail
-
-
-def to_date(value: Any) -> date:
-    if isinstance(value, datetime.datetime):
-        return value.date()
-
-    if isinstance(value, date):
-        return value
-
-    return date.fromisoformat(str(value)[:10])
 
 
 def parse_int(value: str | None) -> int | None:
