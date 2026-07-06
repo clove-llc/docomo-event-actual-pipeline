@@ -109,7 +109,6 @@ def fetch_facility_daily_target_details(
             DATE,
             DATE_FLAG,
             CPA,
-            IS_EXCLUDED,
             STANDARD_TARGET_SEASONAL
         FROM MART.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE
         WHERE BENCHMARK_PERIOD_KEY = ?
@@ -136,8 +135,7 @@ def fetch_facility_daily_target_details(
             date=to_date(row[5]),
             date_flag=str(row[6]),
             cpa=to_int_or_none(row[7]),
-            is_excluded=to_bool_or_none(row[8]),
-            target_value=int(row[9]),
+            target_value=int(row[8]),
         )
         for row in rows
     ]
@@ -160,7 +158,6 @@ def fetch_facility_details(
             F_F_P_S.REGIONAL_OFFICE,
             F_F_P_S.BRANCH_OFFICE,
             F_F_P_S.CPA,
-            F_F_P_S.IS_EXCLUDED,
             F_S_C_M.MONTHLY_EVENT_LIMIT,
             F_S_C_M.OPERATING_DAYS,
             ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = '平日' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_weekday_standard_target_seasonal,
@@ -187,7 +184,6 @@ def fetch_facility_details(
             F_F_P_S.REGIONAL_OFFICE,
             F_F_P_S.BRANCH_OFFICE,
             F_F_P_S.CPA,
-            F_F_P_S.IS_EXCLUDED,
             F_S_C_M.MONTHLY_EVENT_LIMIT,
             F_S_C_M.OPERATING_DAYS
         """,
@@ -207,18 +203,17 @@ def fetch_facility_details(
             regional_office=str(row[3]),
             branch_office=to_str_or_none(row[4]),
             cpa=to_int_or_none(row[5]),
-            is_excluded=to_bool_or_none(row[6]),
-            monthly_event_limit=to_str_or_none(row[7]),
-            operating_days=to_str_or_none(row[8]),
-            avg_weekday_standard_target_seasonal=to_int_or_none(row[9]),
-            avg_regular_weekend_standard_target_seasonal=to_int_or_none(row[10]),
-            avg_three_day_holiday_standard_target_seasonal=to_int_or_none(row[11]),
-            avg_bridge_holiday_standard_target_seasonal=to_int_or_none(row[12]),
-            avg_gw_standard_target_seasonal=to_int_or_none(row[13]),
-            avg_obon_standard_target_seasonal=to_int_or_none(row[14]),
-            avg_new_year_standard_target_seasonal=to_int_or_none(row[15]),
-            avg_year_end_standard_target_seasonal=to_int_or_none(row[16]),
-            avg_black_friday_standard_target_seasonal=to_int_or_none(row[17]),
+            monthly_event_limit=to_str_or_none(row[6]),
+            operating_days=to_str_or_none(row[7]),
+            avg_weekday_standard_target_seasonal=to_int_or_none(row[8]),
+            avg_regular_weekend_standard_target_seasonal=to_int_or_none(row[9]),
+            avg_three_day_holiday_standard_target_seasonal=to_int_or_none(row[10]),
+            avg_bridge_holiday_standard_target_seasonal=to_int_or_none(row[11]),
+            avg_gw_standard_target_seasonal=to_int_or_none(row[12]),
+            avg_obon_standard_target_seasonal=to_int_or_none(row[13]),
+            avg_new_year_standard_target_seasonal=to_int_or_none(row[14]),
+            avg_year_end_standard_target_seasonal=to_int_or_none(row[15]),
+            avg_black_friday_standard_target_seasonal=to_int_or_none(row[16]),
         )
         for row in rows
     ]

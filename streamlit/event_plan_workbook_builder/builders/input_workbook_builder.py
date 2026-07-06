@@ -67,9 +67,8 @@ class InputWorkbookBuilder:
             ws[f"B{row_idx}"] = facility_detail.facility_code
             ws[f"C{row_idx}"] = facility_detail.facility_name
             ws[f"D{row_idx}"] = facility_detail.cpa
-            ws[f"E{row_idx}"] = facility_detail.is_excluded
-            ws[f"F{row_idx}"] = facility_detail.monthly_event_limit
-            ws[f"G{row_idx}"] = facility_detail.operating_days
+            ws[f"E{row_idx}"] = facility_detail.monthly_event_limit
+            ws[f"F{row_idx}"] = facility_detail.operating_days
 
     def _write_facility_daily_target_sheet(self, ws: Worksheet) -> None:
         for row_offset, facility_daily_target_detail in enumerate(

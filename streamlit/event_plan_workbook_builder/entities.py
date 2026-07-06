@@ -30,7 +30,6 @@ class FacilityDetail:
     regional_office: str
     branch_office: str | None
     cpa: int | None
-    is_excluded: bool | None
     monthly_event_limit: str | None
     operating_days: str | None
     avg_weekday_standard_target_seasonal: int | None
@@ -52,7 +51,6 @@ class FacilityDailyTargetDetail:
     regional_office: str
     branch_office: str | None
     cpa: int | None
-    is_excluded: bool | None
     date: date
     date_flag: str
     target_value: int
