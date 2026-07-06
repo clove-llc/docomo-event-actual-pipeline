@@ -88,7 +88,6 @@ calc as (
         b.date_flag,
         i_f_t.cpa,
         i_f_t.cpa is not null as has_target_cpa,
-        (s_e_f_m.facility_name is not null or coalesce(i_f_t.cpa > 100000, false)) as is_excluded,
         case
             when b.date_flag in ('GW', 'お盆') then f_e_p_s_all_period.all_period_standard_target
             else f_e_p_s.standard_target
@@ -134,8 +133,6 @@ calc as (
        and i_f_m_d_g_z.date_flag = '通常土日'
     left join {{ ref("int_facility_target_cpa_by_facility") }} AS i_f_t
         on b.facility_name = i_f_t.facility_name
-    left join {{ ref("stg_excluded_facility_master") }} AS s_e_f_m
-        on b.facility_name = s_e_f_m.facility_name
 )
 
 select
@@ -165,7 +162,6 @@ select
     date_flag,
     cpa,
     has_target_cpa,
-    is_excluded,
     standard_target,
     challenge_target,
     zsc as z_score,
