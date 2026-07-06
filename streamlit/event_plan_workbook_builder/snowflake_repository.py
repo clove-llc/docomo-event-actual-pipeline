@@ -111,7 +111,7 @@ def fetch_facility_daily_target_details(
             CPA,
             IS_EXCLUDED,
             STANDARD_TARGET_SEASONAL
-        FROM MART.FACT_FACILITY_PERFORMANCE_SLOTS
+        FROM MART.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE
         WHERE BENCHMARK_PERIOD_KEY = ?
           AND EXTRACT(YEAR FROM DATE) = ?
           AND EXTRACT(MONTH FROM DATE) = ?
@@ -173,7 +173,7 @@ def fetch_facility_details(
             ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = '年末' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_year_end_standard_target_seasonal,
             ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = 'ブラックフライデー' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_black_friday_standard_target_seasonal
         FROM
-            MART.FACT_FACILITY_PERFORMANCE_SLOTS AS F_F_P_S
+            MART.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE AS F_F_P_S
             LEFT JOIN STG.STG_FACILITY_SCHEDULE_CONSTRAINTS_MASTER AS F_S_C_M ON F_F_P_S.FACILITY_CODE = F_S_C_M.FACILITY_CODE
         WHERE F_F_P_S.BENCHMARK_PERIOD_KEY = ?
             AND EXTRACT(YEAR FROM F_F_P_S.DATE) = ?
