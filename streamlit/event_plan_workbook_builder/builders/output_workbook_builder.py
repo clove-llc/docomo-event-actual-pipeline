@@ -106,11 +106,10 @@ class OutputWorkbookBuilder:
             ws[f"D{row_idx}"] = facility_detail.regional_office
             ws[f"E{row_idx}"] = facility_detail.branch_office
             ws[f"F{row_idx}"] = facility_detail.cpa
-            ws[f"G{row_idx}"] = facility_detail.is_excluded
-            ws[f"H{row_idx}"] = facility_detail.monthly_event_limit
-            ws[f"I{row_idx}"] = facility_detail.operating_days
+            ws[f"G{row_idx}"] = facility_detail.monthly_event_limit
+            ws[f"H{row_idx}"] = facility_detail.operating_days
 
-    def _write_date_header(self, ws: Worksheet, start_col: int = 10) -> None:
+    def _write_date_header(self, ws: Worksheet, start_col: int = 9) -> None:
         for col_offset, date_detail in enumerate(self.date_details):
             col_idx = start_col + col_offset
 
@@ -313,88 +312,87 @@ class OutputWorkbookBuilder:
             ws[f"D{row_idx}"] = facility_detail.regional_office
             ws[f"E{row_idx}"] = facility_detail.branch_office
             ws[f"F{row_idx}"] = facility_detail.cpa
-            ws[f"G{row_idx}"] = facility_detail.is_excluded
-            ws[f"H{row_idx}"] = facility_detail.monthly_event_limit
-            ws[f"I{row_idx}"] = facility_detail.operating_days
+            ws[f"G{row_idx}"] = facility_detail.monthly_event_limit
+            ws[f"H{row_idx}"] = facility_detail.operating_days
 
             # 日付フラグ別の目標値
-            ws[f"J{row_idx}"] = facility_detail.avg_weekday_standard_target_seasonal
-            ws[f"K{row_idx}"] = (
+            ws[f"I{row_idx}"] = facility_detail.avg_weekday_standard_target_seasonal
+            ws[f"J{row_idx}"] = (
                 facility_detail.avg_regular_weekend_standard_target_seasonal
             )
-            ws[f"L{row_idx}"] = (
+            ws[f"K{row_idx}"] = (
                 facility_detail.avg_three_day_holiday_standard_target_seasonal
             )
-            ws[f"M{row_idx}"] = (
+            ws[f"L{row_idx}"] = (
                 facility_detail.avg_bridge_holiday_standard_target_seasonal
             )
-            ws[f"N{row_idx}"] = facility_detail.avg_gw_standard_target_seasonal
-            ws[f"O{row_idx}"] = facility_detail.avg_obon_standard_target_seasonal
-            ws[f"P{row_idx}"] = facility_detail.avg_new_year_standard_target_seasonal
-            ws[f"Q{row_idx}"] = facility_detail.avg_year_end_standard_target_seasonal
-            ws[f"R{row_idx}"] = (
+            ws[f"M{row_idx}"] = facility_detail.avg_gw_standard_target_seasonal
+            ws[f"N{row_idx}"] = facility_detail.avg_obon_standard_target_seasonal
+            ws[f"O{row_idx}"] = facility_detail.avg_new_year_standard_target_seasonal
+            ws[f"P{row_idx}"] = facility_detail.avg_year_end_standard_target_seasonal
+            ws[f"Q{row_idx}"] = (
                 facility_detail.avg_black_friday_standard_target_seasonal
             )
 
             # CPAランク
-            ws[f"S{row_idx}"] = rank_row["cpa_rank"]
+            ws[f"R{row_idx}"] = rank_row["cpa_rank"]
 
             # 日付フラグ別ランク
-            ws[f"T{row_idx}"] = rank_row["weekday_rank"]
-            ws[f"U{row_idx}"] = rank_row["regular_weekend_rank"]
-            ws[f"V{row_idx}"] = rank_row["three_day_holiday_rank"]
-            ws[f"W{row_idx}"] = rank_row["bridge_holiday_rank"]
-            ws[f"X{row_idx}"] = rank_row["gw_rank"]
-            ws[f"Y{row_idx}"] = rank_row["obon_rank"]
-            ws[f"Z{row_idx}"] = rank_row["new_year_rank"]
-            ws[f"AA{row_idx}"] = rank_row["year_end_rank"]
-            ws[f"AB{row_idx}"] = rank_row["black_friday_rank"]
+            ws[f"S{row_idx}"] = rank_row["weekday_rank"]
+            ws[f"T{row_idx}"] = rank_row["regular_weekend_rank"]
+            ws[f"U{row_idx}"] = rank_row["three_day_holiday_rank"]
+            ws[f"V{row_idx}"] = rank_row["bridge_holiday_rank"]
+            ws[f"W{row_idx}"] = rank_row["gw_rank"]
+            ws[f"X{row_idx}"] = rank_row["obon_rank"]
+            ws[f"Y{row_idx}"] = rank_row["new_year_rank"]
+            ws[f"Z{row_idx}"] = rank_row["year_end_rank"]
+            ws[f"AA{row_idx}"] = rank_row["black_friday_rank"]
 
             # CPAランク + 日付フラグ別ランク
-            ws[f"AC{row_idx}"] = rank_row["weekday_sum_rank"]
-            ws[f"AD{row_idx}"] = rank_row["regular_weekend_sum_rank"]
-            ws[f"AE{row_idx}"] = rank_row["three_day_holiday_sum_rank"]
-            ws[f"AF{row_idx}"] = rank_row["bridge_holiday_sum_rank"]
-            ws[f"AG{row_idx}"] = rank_row["gw_sum_rank"]
-            ws[f"AH{row_idx}"] = rank_row["obon_sum_rank"]
-            ws[f"AI{row_idx}"] = rank_row["new_year_sum_rank"]
-            ws[f"AJ{row_idx}"] = rank_row["year_end_sum_rank"]
-            ws[f"AK{row_idx}"] = rank_row["black_friday_sum_rank"]
+            ws[f"AB{row_idx}"] = rank_row["weekday_sum_rank"]
+            ws[f"AC{row_idx}"] = rank_row["regular_weekend_sum_rank"]
+            ws[f"AD{row_idx}"] = rank_row["three_day_holiday_sum_rank"]
+            ws[f"AE{row_idx}"] = rank_row["bridge_holiday_sum_rank"]
+            ws[f"AF{row_idx}"] = rank_row["gw_sum_rank"]
+            ws[f"AG{row_idx}"] = rank_row["obon_sum_rank"]
+            ws[f"AH{row_idx}"] = rank_row["new_year_sum_rank"]
+            ws[f"AI{row_idx}"] = rank_row["year_end_sum_rank"]
+            ws[f"AJ{row_idx}"] = rank_row["black_friday_sum_rank"]
 
             # sum_rankの最終順位
-            ws[f"AL{row_idx}"] = get_rank(
+            ws[f"AK{row_idx}"] = get_rank(
                 rank_row["weekday_sum_rank"],
                 weekday_priority_rank_map,
             )
-            ws[f"AM{row_idx}"] = get_rank(
+            ws[f"AL{row_idx}"] = get_rank(
                 rank_row["regular_weekend_sum_rank"],
                 regular_weekend_priority_rank_map,
             )
-            ws[f"AN{row_idx}"] = get_rank(
+            ws[f"AM{row_idx}"] = get_rank(
                 rank_row["three_day_holiday_sum_rank"],
                 three_day_holiday_priority_rank_map,
             )
-            ws[f"AO{row_idx}"] = get_rank(
+            ws[f"AN{row_idx}"] = get_rank(
                 rank_row["bridge_holiday_sum_rank"],
                 bridge_holiday_priority_rank_map,
             )
-            ws[f"AP{row_idx}"] = get_rank(
+            ws[f"AO{row_idx}"] = get_rank(
                 rank_row["gw_sum_rank"],
                 gw_priority_rank_map,
             )
-            ws[f"AQ{row_idx}"] = get_rank(
+            ws[f"AP{row_idx}"] = get_rank(
                 rank_row["obon_sum_rank"],
                 obon_priority_rank_map,
             )
-            ws[f"AR{row_idx}"] = get_rank(
+            ws[f"AQ{row_idx}"] = get_rank(
                 rank_row["new_year_sum_rank"],
                 new_year_priority_rank_map,
             )
-            ws[f"AS{row_idx}"] = get_rank(
+            ws[f"AR{row_idx}"] = get_rank(
                 rank_row["year_end_sum_rank"],
                 year_end_priority_rank_map,
             )
-            ws[f"AT{row_idx}"] = get_rank(
+            ws[f"AS{row_idx}"] = get_rank(
                 rank_row["black_friday_sum_rank"],
                 black_friday_priority_rank_map,
             )
@@ -403,7 +401,7 @@ class OutputWorkbookBuilder:
         self._write_constraint_sheet(self.wb[self.CONSTRAINT_SHEET_NAME])
 
         self._write_facility_output_sheet(self.wb[self.COPILOT_OUTPUT_SHEET_NAME])
-        self._write_date_header(self.wb[self.COPILOT_OUTPUT_SHEET_NAME], start_col=20)
+        self._write_date_header(self.wb[self.COPILOT_OUTPUT_SHEET_NAME], start_col=18)
 
         for sheet_name in self.FACILITY_OUTPUT_SHEET_NAMES:
             ws = self.wb[sheet_name]
