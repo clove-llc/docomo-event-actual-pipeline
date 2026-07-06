@@ -107,7 +107,7 @@ TABLES = [
     ("計画スナップショット", "int", BQ_INT_DATASET, "int_facility_event_planning_snapshot", f"{SF_DB}.INT.INT_FACILITY_EVENT_PLANNING_SNAPSHOT", _EXCL_BRANCH),
     ("施設別目標CPA", "int", BQ_INT_DATASET, "int_facility_target_cpa_by_facility", f"{SF_DB}.INT.INT_FACILITY_TARGET_CPA_BY_FACILITY", {}),
     # --- mart 層（BQ mart ↔ DOCOMO_DB.MART）---
-    ("実績スロットFact", "mart", BQ_MART_DATASET, "fact_facility_performance_slots", f"{SF_DB}.MART.FACT_FACILITY_PERFORMANCE_SLOTS", _EXCL_MART),
+    ("実績スロットFact", "mart", BQ_MART_DATASET, "fact_facility_performance_slots_table", f"{SF_DB}.MART.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE", _EXCL_MART),
 ]
 
 
