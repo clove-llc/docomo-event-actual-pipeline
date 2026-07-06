@@ -1,5 +1,5 @@
 
-  create or replace   view HARATO.MART.fact_facility_performance_slots
+  create or replace   view HARATO.MART.fact_facility_performance_slots_view
   
   
   
