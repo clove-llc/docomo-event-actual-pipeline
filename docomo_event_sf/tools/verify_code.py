@@ -1,38 +1,44 @@
 """BigQuery ↔ Snowflake 値突合ツール（厳密比較）
 
-BQ→SF 移行の検証用。BigQuery 本番の source テーブルと、Snowflake 側で再現した
+BQ→SF 移行の検証用。BigQuery 本番のテーブルと、Snowflake 側で再現した
 テーブルを **行レベル** で突合する。
+
+比較は **BigQuery の持つカラムベース** で行う:
+  - 各テーブルの比較列は BQ INFORMATION_SCHEMA から自動導出する（手書き定義はしない）。
+  - SF 側にしか無い列（拡張列）は比較対象外。SF に無い BQ 列は警告して除外する。
 
 DB 間の値表現の差は **Python（本ツール）側で巻き取って** 比較する:
   - num : float に統一（Decimal / Integer / Float の差を吸収。IEEE 表現ゆらぎ対策で小数9桁丸め）
   - date: date に統一（YYYY-MM-DD 文字列）
   - bool: bool に統一
   - str : trim しない（BQ も空白を保持）。空文字と NULL は両DBで NULL。
-          **Excel エラー（#N/A 等）は NULL に揃える**（BQ=文字列 "#N/A" / SF=NULL。
-          特に数式エラー由来の #N/A は pandas が保持できないため、ここで吸収する。
-          ※ #N/A 行でも、値の入った他列はそのまま比較対象になる）。
+          **Excel エラー（#N/A 等）は NULL に揃える**（BQ=文字列 "#N/A" / SF=NULL）。
 
 既知の設計差は対象列から外して比較する（masking ではなく「比較しない列」を明示）:
-  - 実績 source_sheet_name: SF=正規化 yyyymm（例 202510）/ BQ=生シート名（例 2025.1）。
-    → 各テーブル定義の exclude に列挙し、理由を残す。
+  - source_sheet_name: SF=正規化 yyyymm（例 202510）/ BQ=生シート名（例 2025.1）。
+  - branch_office    : SF=拠点略号プレフィックス除去（例 BQ「神）神奈川支店」→ SF「神奈川支店」）。
 
-対象（既定）: レイヤー別に2系統を突合する。
-  raw 層: BQ docomo_event_raw.raw_*     ↔ SF HARATO.RAW.RAW_*（源泉作成＝GAS独自実装が BQ raw と一致するか）
-  stg 層: BQ docomo_event_staging.stg_* ↔ SF HARATO.STG.STG_*（BQ staging の passthrough / TRIM ミラー）
-  各層とも: 人流デシル / 季節指数 / 実績データ（source_sheet_name 除外）/ 日付マスタ / 施設マスタ / 施設名マッピング
+対象: レイヤー別に突合する（SF 側の実体配置に合わせる）。
+  raw 層 : BQ docomo_event_raw.raw_*          ↔ SF HARATO.RAW.RAW_*
+           （源泉作成層。実績はアップローダが横持ち RAW_FACILITY_ACTUALS_<yyyymm> を
+             縦持ち化して RAW_FACILITY_ACTUALS を生成する。他は GAS 独自実装の再現）
+  stg 層 : BQ docomo_event_staging.stg_*      ↔ SF DOCOMO_DB.STG.STG_*（view）
+  int 層 : BQ docomo_event_intermediate.int_* ↔ SF DOCOMO_DB.INT.INT_*（view）
+  mart 層: BQ docomo_event_mart.fact_*        ↔ SF DOCOMO_DB.MART.FACT_*（view）
+  ※ SF 独自テーブル（STG_FACILITY_SCHEDULE_CONSTRAINTS_MASTER /
+     STG_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER）は BQ に対応が無いため対象外。
 
 依存: google-cloud-bigquery, snowflake-connector-python, pandas
 
 認証:
   - BigQuery: ADC（gcloud auth application-default login）。
-  - Snowflake: 環境変数 SNOWFLAKE_ACCOUNT/USER/PRIVATE_KEY_PATH/ROLE/WAREHOUSE/DATABASE
+  - Snowflake: 環境変数 SNOWFLAKE_ACCOUNT/USER/PRIVATE_KEY_PATH/ROLE/WAREHOUSE
     （dbt プロファイル dbt_project と同じ env_var）。
 
 使い方:
   python tools/verify_code.py                  # 全レイヤー・全テーブル突合
-  python tools/verify_code.py --layer raw      # raw 層のみ（源泉作成 ↔ BQ raw）
-  python tools/verify_code.py --layer stg      # stg 層のみ（staging ↔ BQ staging）
-  python tools/verify_code.py --table 季節指数  # ラベル指定（両レイヤー）
+  python tools/verify_code.py --layer raw      # レイヤー指定
+  python tools/verify_code.py --table 季節指数  # ラベル指定
   python tools/verify_code.py --show-diff      # 不一致行のサンプルを表示
 """
 
@@ -49,70 +55,59 @@ import pandas as pd
 
 # ===== 設定 =====
 BQ_PROJECT = os.environ.get("BQ_PROJECT", "digital-well-456700-i9")
-# レイヤー別の突合先 BQ データセット。
-#   raw : BQ docomo_event_raw.raw_*            ↔ SF HARATO.RAW.RAW_*（源泉作成層＝GAS独自実装の再現）
-#   stg : BQ docomo_event_staging.stg_*        ↔ SF HARATO.STG.STG_*（BQ staging のミラー）
 BQ_RAW_DATASET = os.environ.get("BQ_RAW_DATASET", "docomo_event_raw")
 BQ_STG_DATASET = os.environ.get("BQ_STG_DATASET", "docomo_event_staging")
 BQ_INT_DATASET = os.environ.get("BQ_INT_DATASET", "docomo_event_intermediate")
 BQ_MART_DATASET = os.environ.get("BQ_MART_DATASET", "docomo_event_mart")
+# SF 側: raw はアップローダ出力先（HARATO.RAW）、stg/int/mart は dbt の view 層（DOCOMO_DB）
+SF_RAW_DB = os.environ.get("SF_RAW_DB", "HARATO.RAW")
+SF_DB = os.environ.get("SF_DB", "DOCOMO_DB")
 NUM_ROUND = 9  # IEEE 浮動小数の表現ゆらぎを吸収する丸め桁（データ精度より十分細かい）
 # Excel エラー（BQ は文字列保持・SF は NULL）。比較では NULL に揃えて吸収する。
 EXCEL_ERRORS = {"#N/A", "#NAME?", "#REF!", "#VALUE!", "#DIV/0!", "#NUM!", "#NULL!"}
 
-_FLAGS = ["gw", "obon", "three_day_holiday", "new_year", "regular_weekend",
-          "year_end", "bridge_holiday", "weekday", "black_friday"]
+# 既知の設計差（比較しない列: 列名 → 理由）
+_EXCL_SHEET = {"source_sheet_name": "SF=正規化yyyymm(202510) / BQ=生シート名(2025.1) の設計差"}
+_EXCL_BRANCH = {"branch_office": "SF=拠点略号プレフィックス除去（神）神奈川支店→神奈川支店）の設計差"}
+# mart is_excluded: BQ=除外マスタ未マッチ行はNULL / SF=FALSEに正規化。意味的に等価
+# （TRUE 50,370行・23施設の集合一致をSQLで確認済み）。NULL⇔FALSE の表現差のため除外。
+_EXCL_MART = {**_EXCL_BRANCH,
+              "is_excluded": "BQ=NULL/SF=FALSE正規化の設計差（TRUE集合の一致は確認済み）"}
 
-# 列 → 論理型（突合対象列＝この dict のキー）
-T_DECILE = {"facility_code": "num", "facility_name": "str",
-            **{f"{f}_foot_traffic_avg": "num" for f in _FLAGS},
-            **{f"{f}_decile_rank": "num" for f in _FLAGS}}
-T_ZSCORE = {"date": "date", "facility_code": "num", "facility_name": "str",
-            "z_score": "num", "month": "num", "week_number_monthly": "num", "date_flag": "str"}
-T_ACTUALS = {"source_sheet_name": "str", "regional_office_name": "str", "branch_office_name": "str",
-             "facility_name": "str", "floor_label": "str", "space_name": "str", "area_raw": "str",
-             "helper_company_name": "str", "staff_count_raw": "str",
-             "start_date": "date", "end_date": "date", "event_date": "date", "actual_value": "num"}
-T_DATE_MASTER = {"date": "date", "year_month": "str", "year": "num", "month": "num", "day": "num",
-                 "week_number_yearly": "num", "week_number_monthly": "num", "weekday_name": "str",
-                 "weekday_name_and_week_number_monthly": "str", "weekday_holiday_weekend": "str",
-                 "is_offday": "bool", "holiday_name": "str", "is_holiday": "bool",
-                 "weekday_holiday_with_holiday": "str", "date_type": "str", "date_flag": "str"}
-T_FACILITY_MASTER = {"facility_code": "num", "facility_name": "str", "po_level": "str",
-                     "regional_office": "str", "branch_office": "str"}
-T_NAME_MAPPINGS = {"original_name": "str", "mapped_name": "str"}
-
-# (ラベル, レイヤー, BQデータセット, BQテーブル, SF FQTN, 列型, 除外列{列: 理由})
-#   raw 層: SF 源泉作成（HARATO.RAW.RAW_*）が BQ raw と一致するか（独自実装 ↔ BQ raw データ）。
-#   stg 層: SF staging（HARATO.STG.STG_*）が BQ staging と一致するか（passthrough / TRIM のミラー）。
-_EXCL_ACTUALS = {"source_sheet_name": "SF=正規化yyyymm(202510) / BQ=生シート名(2025.1) の設計差"}
+# (ラベル, レイヤー, BQデータセット, BQテーブル, SF FQTN, 除外列{列: 理由})
+# 比較列は BQ INFORMATION_SCHEMA から自動導出（BQ カラムベース）。
 TABLES = [
-    # --- raw 層（源泉作成 ↔ BQ raw）---
-    ("人流デシル", "raw", BQ_RAW_DATASET, "raw_facility_foot_traffic_avg_and_decile_by_flag", "HARATO.RAW.RAW_FACILITY_FOOT_TRAFFIC_AVG_AND_DECILE_BY_FLAG", T_DECILE, {}),
-    ("季節指数", "raw", BQ_RAW_DATASET, "raw_facility_daily_deviation_zscore", "HARATO.RAW.RAW_FACILITY_DAILY_DEVIATION_ZSCORE", T_ZSCORE, {}),
-    ("実績データ", "raw", BQ_RAW_DATASET, "raw_facility_actuals", "HARATO.RAW.RAW_FACILITY_ACTUALS", T_ACTUALS, _EXCL_ACTUALS),
-    ("日付マスタ", "raw", BQ_RAW_DATASET, "raw_date_master", "HARATO.RAW.RAW_DATE_MASTER", T_DATE_MASTER, {}),
-    ("施設マスタ", "raw", BQ_RAW_DATASET, "raw_facility_master", "HARATO.RAW.RAW_FACILITY_MASTER", T_FACILITY_MASTER, {}),
-    ("施設名マッピング", "raw", BQ_RAW_DATASET, "raw_facility_name_mappings", "HARATO.RAW.RAW_FACILITY_NAME_MAPPINGS", T_NAME_MAPPINGS, {}),
-    # --- stg 層（staging ↔ BQ staging）---
-    ("人流デシル", "stg", BQ_STG_DATASET, "stg_facility_foot_traffic_avg_and_decile_by_flag", "HARATO.STG.STG_FACILITY_FOOT_TRAFFIC_AVG_AND_DECILE_BY_FLAG", T_DECILE, {}),
-    ("季節指数", "stg", BQ_STG_DATASET, "stg_facility_daily_deviation_zscore", "HARATO.STG.STG_FACILITY_DAILY_DEVIATION_ZSCORE", T_ZSCORE, {}),
-    ("実績データ", "stg", BQ_STG_DATASET, "stg_facility_actuals", "HARATO.STG.STG_FACILITY_ACTUALS", T_ACTUALS, _EXCL_ACTUALS),
-    ("日付マスタ", "stg", BQ_STG_DATASET, "stg_date_master", "HARATO.STG.STG_DATE_MASTER", T_DATE_MASTER, {}),
-    ("施設マスタ", "stg", BQ_STG_DATASET, "stg_facility_master", "HARATO.STG.STG_FACILITY_MASTER", T_FACILITY_MASTER, {}),
-    ("施設名マッピング", "stg", BQ_STG_DATASET, "stg_facility_name_mappings", "HARATO.STG.STG_FACILITY_NAME_MAPPINGS", T_NAME_MAPPINGS, {}),
-    # --- int 層（BQ docomo_event_intermediate ↔ SF HARATO.INT）。列型はBQ schemaから自動導出（types=None）---
-    ("実績(int)", "int", BQ_INT_DATASET, "int_facility_actuals", "HARATO.INT.INT_FACILITY_ACTUALS", None, _EXCL_ACTUALS),
-    ("日別実績", "int", BQ_INT_DATASET, "int_facility_daily_actual", "HARATO.INT.INT_FACILITY_DAILY_ACTUAL", None, {}),
-    ("ベンチ期間", "int", BQ_INT_DATASET, "int_benchmark_periods", "HARATO.INT.INT_BENCHMARK_PERIODS", None, {}),
-    ("デシルマッピング", "int", BQ_INT_DATASET, "int_facility_event_decile_mapping", "HARATO.INT.INT_FACILITY_EVENT_DECILE_MAPPING", None, {}),
-    ("デシル平均実績", "int", BQ_INT_DATASET, "int_facility_event_decile_avg_actual", "HARATO.INT.INT_FACILITY_EVENT_DECILE_AVG_ACTUAL", None, {}),
-    ("デシルベンチ", "int", BQ_INT_DATASET, "int_event_decile_benchmark", "HARATO.INT.INT_EVENT_DECILE_BENCHMARK", None, {}),
-    ("月週フラグZ", "int", BQ_INT_DATASET, "int_facility_monthly_weekday_dateflag_deviation_zscore", "HARATO.INT.INT_FACILITY_MONTHLY_WEEKDAY_DATEFLAG_DEVIATION_ZSCORE", None, {}),
-    ("月フラグZ", "int", BQ_INT_DATASET, "int_facility_monthly_dateflag_deviation_zscore", "HARATO.INT.INT_FACILITY_MONTHLY_DATEFLAG_DEVIATION_ZSCORE", None, {}),
-    ("計画スナップショット", "int", BQ_INT_DATASET, "int_facility_event_planning_snapshot", "HARATO.INT.INT_FACILITY_EVENT_PLANNING_SNAPSHOT", None, {}),
-    # --- mart 層（BQ docomo_event_mart ↔ SF HARATO.MART）---
-    ("実績スロットFact", "mart", BQ_MART_DATASET, "fact_facility_performance_slots", "HARATO.MART.FACT_FACILITY_PERFORMANCE_SLOTS", None, {}),
+    # --- raw 層（BQ raw ↔ HARATO.RAW。実績はアップローダの縦持ち化出力）---
+    ("人流デシル", "raw", BQ_RAW_DATASET, "raw_facility_foot_traffic_avg_and_decile_by_flag", f"{SF_RAW_DB}.RAW_FACILITY_FOOT_TRAFFIC_AVG_AND_DECILE_BY_FLAG", {}),
+    ("季節指数", "raw", BQ_RAW_DATASET, "raw_facility_daily_deviation_zscore", f"{SF_RAW_DB}.RAW_FACILITY_DAILY_DEVIATION_ZSCORE", {}),
+    ("実績データ", "raw", BQ_RAW_DATASET, "raw_facility_actuals", f"{SF_RAW_DB}.RAW_FACILITY_ACTUALS", _EXCL_SHEET),
+    ("日付マスタ", "raw", BQ_RAW_DATASET, "raw_date_master", f"{SF_RAW_DB}.RAW_DATE_MASTER", {}),
+    ("施設マスタ", "raw", BQ_RAW_DATASET, "raw_facility_master", f"{SF_RAW_DB}.RAW_FACILITY_MASTER", _EXCL_BRANCH),
+    ("施設名マッピング", "raw", BQ_RAW_DATASET, "raw_facility_name_mappings", f"{SF_RAW_DB}.RAW_FACILITY_NAME_MAPPINGS", {}),
+    ("除外施設マスタ", "raw", BQ_RAW_DATASET, "raw_excluded_facility_master", f"{SF_RAW_DB}.RAW_EXCLUDED_FACILITY_MASTER", {}),
+    ("目標CPAマスタ", "raw", BQ_RAW_DATASET, "raw_facility_target_cpa_master", f"{SF_RAW_DB}.RAW_FACILITY_TARGET_CPA_MASTER", {}),
+    # --- stg 層（BQ staging ↔ DOCOMO_DB.STG）---
+    ("人流デシル", "stg", BQ_STG_DATASET, "stg_facility_foot_traffic_avg_and_decile_by_flag", f"{SF_DB}.STG.STG_FACILITY_FOOT_TRAFFIC_AVG_AND_DECILE_BY_FLAG", {}),
+    ("季節指数", "stg", BQ_STG_DATASET, "stg_facility_daily_deviation_zscore", f"{SF_DB}.STG.STG_FACILITY_DAILY_DEVIATION_ZSCORE", {}),
+    ("実績データ", "stg", BQ_STG_DATASET, "stg_facility_actuals", f"{SF_DB}.STG.STG_FACILITY_ACTUALS", _EXCL_SHEET),
+    ("日付マスタ", "stg", BQ_STG_DATASET, "stg_date_master", f"{SF_DB}.STG.STG_DATE_MASTER", {}),
+    ("施設マスタ", "stg", BQ_STG_DATASET, "stg_facility_master", f"{SF_DB}.STG.STG_FACILITY_MASTER", _EXCL_BRANCH),
+    ("施設名マッピング", "stg", BQ_STG_DATASET, "stg_facility_name_mappings", f"{SF_DB}.STG.STG_FACILITY_NAME_MAPPINGS", {}),
+    ("除外施設マスタ", "stg", BQ_STG_DATASET, "stg_excluded_facility_master", f"{SF_DB}.STG.STG_EXCLUDED_FACILITY_MASTER", {}),
+    ("目標CPAマスタ", "stg", BQ_STG_DATASET, "stg_facility_target_cpa_master", f"{SF_DB}.STG.STG_FACILITY_TARGET_CPA_MASTER", {}),
+    # --- int 層（BQ intermediate ↔ DOCOMO_DB.INT）---
+    ("実績(int)", "int", BQ_INT_DATASET, "int_facility_actuals", f"{SF_DB}.INT.INT_FACILITY_ACTUALS", _EXCL_SHEET),
+    ("日別実績", "int", BQ_INT_DATASET, "int_facility_daily_actual", f"{SF_DB}.INT.INT_FACILITY_DAILY_ACTUAL", _EXCL_BRANCH),
+    ("ベンチ期間", "int", BQ_INT_DATASET, "int_benchmark_periods", f"{SF_DB}.INT.INT_BENCHMARK_PERIODS", {}),
+    ("デシルマッピング", "int", BQ_INT_DATASET, "int_facility_event_decile_mapping", f"{SF_DB}.INT.INT_FACILITY_EVENT_DECILE_MAPPING", {}),
+    ("デシル平均実績", "int", BQ_INT_DATASET, "int_facility_event_decile_avg_actual", f"{SF_DB}.INT.INT_FACILITY_EVENT_DECILE_AVG_ACTUAL", _EXCL_BRANCH),
+    ("デシルベンチ", "int", BQ_INT_DATASET, "int_event_decile_benchmark", f"{SF_DB}.INT.INT_EVENT_DECILE_BENCHMARK", {}),
+    ("月週フラグZ", "int", BQ_INT_DATASET, "int_facility_monthly_weekday_dateflag_deviation_zscore", f"{SF_DB}.INT.INT_FACILITY_MONTHLY_WEEKDAY_DATEFLAG_DEVIATION_ZSCORE", {}),
+    ("月フラグZ", "int", BQ_INT_DATASET, "int_facility_monthly_dateflag_deviation_zscore", f"{SF_DB}.INT.INT_FACILITY_MONTHLY_DATEFLAG_DEVIATION_ZSCORE", {}),
+    ("計画スナップショット", "int", BQ_INT_DATASET, "int_facility_event_planning_snapshot", f"{SF_DB}.INT.INT_FACILITY_EVENT_PLANNING_SNAPSHOT", _EXCL_BRANCH),
+    ("施設別目標CPA", "int", BQ_INT_DATASET, "int_facility_target_cpa_by_facility", f"{SF_DB}.INT.INT_FACILITY_TARGET_CPA_BY_FACILITY", {}),
+    # --- mart 層（BQ mart ↔ DOCOMO_DB.MART）---
+    ("実績スロットFact", "mart", BQ_MART_DATASET, "fact_facility_performance_slots", f"{SF_DB}.MART.FACT_FACILITY_PERFORMANCE_SLOTS", _EXCL_MART),
 ]
 
 
@@ -163,7 +158,7 @@ def _bq_logical_type(bq_type: str) -> str:
 
 
 def bq_column_types(client, dataset: str, table: str) -> dict:
-    """BQ INFORMATION_SCHEMA から {列名(小文字): 論理型} を作る（int/mart の列定義を自動導出）。"""
+    """BQ INFORMATION_SCHEMA から {列名(小文字): 論理型} を作る（BQ カラムベースの源）。"""
     sql = (f"SELECT column_name, data_type FROM `{BQ_PROJECT}.{dataset}.INFORMATION_SCHEMA.COLUMNS` "
            f"WHERE table_name = '{table}' ORDER BY ordinal_position")
     return {r["column_name"].lower(): _bq_logical_type(r["data_type"]) for r in client.query(sql).result()}
@@ -196,7 +191,6 @@ def connect_sf():
         "user": os.environ["SNOWFLAKE_USER"],
         "role": os.environ.get("SNOWFLAKE_ROLE"),
         "warehouse": os.environ.get("SNOWFLAKE_WAREHOUSE"),
-        "database": os.environ.get("SNOWFLAKE_DATABASE", "HARATO"),
         "private_key_file": os.environ.get("SNOWFLAKE_PRIVATE_KEY_PATH"),
     }
     return snowflake.connector.connect(**{k: v for k, v in params.items() if v})
@@ -233,28 +227,27 @@ def main() -> int:
 
     bq = connect_bq()
     sf = connect_sf()
-    print("=== BQ ↔ Snowflake 厳密突合（型統一のみ）===")
+    print("=== BQ ↔ Snowflake 厳密突合（BQカラムベース・型統一のみ）===")
     results = []
     current_layer = None
     try:
-        for label, layer, bq_dataset, bq_table, sf_fqtn, types, exclude in TABLES:
+        for label, layer, bq_dataset, bq_table, sf_fqtn, exclude in TABLES:
             if args.table and args.table != label:
                 continue
             if args.layer and args.layer != layer:
                 continue
             if layer != current_layer:
                 current_layer = layer
-                print(f"\n--- {layer} 層（BQ {bq_dataset} ↔ SF HARATO.{layer.upper()}）---")
-            # int/mart は列定義を BQ schema から自動導出（types=None）
-            if types is None:
-                types = bq_column_types(bq, bq_dataset, bq_table)
+                sf_loc = SF_RAW_DB if layer == "raw" else f"{SF_DB}.{layer.upper()}"
+                print(f"\n--- {layer} 層（BQ {bq_dataset} ↔ SF {sf_loc}）---")
+            # 比較列は BQ schema から自動導出（BQ カラムベース）
+            types = bq_column_types(bq, bq_dataset, bq_table)
             sf_df = sf_dataframe(sf, sf_fqtn)
             sf_cols = set(sf_df.columns)
-            # SF に存在する列のみ比較対象（mirror 不整合は警告して除外）
             common = {c: t for c, t in types.items() if c in sf_cols}
             dropped = [c for c in types if c not in sf_cols]
             if dropped:
-                print(f"   [警告] {label}[{layer}] SFに無い列を比較除外: {dropped}")
+                print(f"   [警告] {label}[{layer}] SFに無いBQ列を比較除外: {dropped}")
             bq_df = bq_dataframe(bq, bq_dataset, bq_table, list(common))
             results.append(compare(f"{label}[{layer}]", bq_df, sf_df, common, exclude, args.show_diff))
     finally:
