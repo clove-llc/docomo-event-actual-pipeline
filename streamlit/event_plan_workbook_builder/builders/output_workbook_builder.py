@@ -403,7 +403,7 @@ class OutputWorkbookBuilder:
         self._write_constraint_sheet(self.wb[self.CONSTRAINT_SHEET_NAME])
 
         self._write_facility_output_sheet(self.wb[self.COPILOT_OUTPUT_SHEET_NAME])
-        self._write_date_header(self.wb[self.COPILOT_OUTPUT_SHEET_NAME], start_col=18)
+        self._write_date_header(self.wb[self.COPILOT_OUTPUT_SHEET_NAME], start_col=20)
 
         for sheet_name in self.FACILITY_OUTPUT_SHEET_NAMES:
             ws = self.wb[sheet_name]
