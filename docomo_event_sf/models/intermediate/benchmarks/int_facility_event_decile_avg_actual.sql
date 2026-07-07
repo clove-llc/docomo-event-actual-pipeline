@@ -17,7 +17,7 @@ with joined as (
         m.decile_rank,
         d.actual
     from {{ ref('int_facility_daily_actual') }} as d
-    inner join {{ ref('int_benchmark_periods') }} as p
+    inner join {{ source('raw', 'RAW_BENCHMARK_PERIODS') }} as p
         on d.date between p.period_start_date and p.period_end_date
     left join {{ ref('int_facility_event_decile_mapping') }} as m
         on d.facility_code = m.facility_code

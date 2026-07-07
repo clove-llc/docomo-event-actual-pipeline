@@ -22,7 +22,7 @@ all_pattern as (
         d_f.date_flag,
         i_f_e_d_m.decile_rank
     from {{ ref('stg_facility_master') }} as s_f_m
-    cross join {{ ref('int_benchmark_periods') }} as i_b_p
+    cross join {{ source('raw', 'RAW_BENCHMARK_PERIODS') }} as i_b_p
     cross join date_flags as d_f
     left join {{ ref('int_facility_event_decile_mapping') }} as i_f_e_d_m
         on s_f_m.facility_code = i_f_e_d_m.facility_code
