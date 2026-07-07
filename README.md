@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS DATABASE_NAME.RAW.RAW_BENCHMARK_PERIODS (
 **snowコマンドでデプロイする場合***
 
 ```bash
+-- strealmit/benchmark_periods_manager・streamlit/event_plan_workbook_builder・streamlit/uploader配下で以下を実行する。
 snow streamlit deploy --replace --prune --legacy -c <connection_name> --database <database_name> --schema <schema_name>
 ```
 
