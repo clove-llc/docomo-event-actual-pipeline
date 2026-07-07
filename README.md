@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS DATABASE_NAME.RAW.RAW_BENCHMARK_PERIODS (
 )
 ```
 
+上記クエリを実行後、過去実績期間マスタ管理アプリからデータを追加する。
+
 ### 3. ビューの作成
 
 `docomo_event_sf/create_or_replace_view_queries`フォルダ内のSQLを以下の順番で実行する。
