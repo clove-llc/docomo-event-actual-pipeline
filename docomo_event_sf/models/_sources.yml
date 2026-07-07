@@ -28,5 +28,7 @@ sources:
         description: "支社別スケジュール制限マスタ"
       - name: RAW_FACILITY_SCHEDULE_CONSTRAINTS_MASTER
         description: "施設別スケジュール制限マスタ"
+      - name: RAW_BENCHMARK_PERIODS
+        description: "ベンチマーク期間マスタ"
       # 実績データは月別 RAW_FACILITY_ACTUALS_<yyyymm>（動的）。
       # raw_facility_actuals モデルが dbt_utils.get_relations_by_pattern で自動検出するため source 定義は不要。

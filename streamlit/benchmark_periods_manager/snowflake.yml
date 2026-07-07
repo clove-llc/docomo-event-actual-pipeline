@@ -1,0 +1,15 @@
+definition_version: 2
+
+entities:
+  benchmark_periods_manager:
+    type: streamlit
+    identifier: BENCHMARK_PERIODS_MANAGER
+    stage: STREAMLIT_STAGE
+    query_warehouse: STREAMLIT_WH
+    main_file: app.py
+    artifacts:
+      - app.py
+      - config.py
+      - entities.py
+      - snowflake_repository.py
+      - environment.yml

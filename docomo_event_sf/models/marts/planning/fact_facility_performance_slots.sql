@@ -38,7 +38,7 @@ base as (
         s_d_m.date_flag
     from {{ ref('stg_facility_master') }} as s_f_m
     cross join {{ ref('stg_date_master') }} as s_d_m
-    cross join {{ ref('int_benchmark_periods') }} as p
+    cross join {{ source('raw', 'RAW_BENCHMARK_PERIODS') }} as p
 ),
 
 calc as (

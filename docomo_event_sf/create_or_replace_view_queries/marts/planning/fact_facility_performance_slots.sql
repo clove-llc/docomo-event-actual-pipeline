@@ -34,7 +34,7 @@ base as (
         s_d_m.date_flag
     from HARATO.STG.stg_facility_master as s_f_m
     cross join HARATO.STG.stg_date_master as s_d_m
-    cross join HARATO.INT.int_benchmark_periods as p
+    cross join HARATO.RAW.RAW_BENCHMARK_PERIODS as p
 ),
 
 calc as (
@@ -164,5 +164,5 @@ select
     round(cast((standard_target * zsc) as number(38, 18)), 0) as standard_target_seasonal,
     round(cast((challenge_target * zsc) as number(38, 18)), 0) as challenge_target_seasonal
 from calc
-  );
+);
 

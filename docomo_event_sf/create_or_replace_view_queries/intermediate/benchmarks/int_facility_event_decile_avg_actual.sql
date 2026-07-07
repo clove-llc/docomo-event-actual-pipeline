@@ -1,11 +1,5 @@
-
-  create or replace   view HARATO.INT.int_facility_event_decile_avg_actual
-  
-  
-  
-  
-  as (
-    with joined as (
+create or replace view HARATO.INT.int_facility_event_decile_avg_actual as (
+with joined as (
     select
         p.benchmark_period_key,
         p.benchmark_period_name,
@@ -20,7 +14,7 @@
         m.decile_rank,
         d.actual
     from HARATO.INT.int_facility_daily_actual as d
-    inner join HARATO.INT.int_benchmark_periods as p
+    inner join HARATO.RAW.RAW_BENCHMARK_PERIODS as p
         on d.date between p.period_start_date and p.period_end_date
     left join HARATO.INT.int_facility_event_decile_mapping as m
         on d.facility_code = m.facility_code
@@ -54,5 +48,4 @@ group by
     branch_office,
     date_flag,
     decile_rank
-  );
-
+);
