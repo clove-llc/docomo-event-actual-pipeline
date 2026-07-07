@@ -236,15 +236,7 @@ def render_add_section(existing_periods: list[BenchmarkPeriod]) -> None:
 
 
 def render_update_delete_section(benchmark_periods: list[BenchmarkPeriod]) -> None:
-    col1, col2 = st.columns([1, 2])
-
-    with col1:
-        st.subheader("更新・削除")
-
-    with col2:
-        st.caption(
-            "※ セルを変更した後は、一度Enterキーを押すか、別のセルをクリックして確定させてから保存ボタンを押してください。"
-        )
+    st.subheader("更新・削除")
 
     if not benchmark_periods:
         st.info("更新・削除対象のデータがありません。")
@@ -270,11 +262,13 @@ def render_update_delete_section(benchmark_periods: list[BenchmarkPeriod]) -> No
                 ),
                 "benchmark_period_key": st.column_config.TextColumn(
                     "過去実績期間キー",
-                    help="period_start_date / period_end_date から保存時に再生成します。",
+                    help="開始日・終了日 から保存時に再生成します。",
+                    disabled=True,
                 ),
                 "benchmark_period_name": st.column_config.TextColumn(
                     "過去実績期間名",
-                    help="period_start_date / period_end_date から保存時に再生成します。",
+                    help="開始日・終了日 から保存時に再生成します。",
+                    disabled=True,
                 ),
                 "period_start_date": st.column_config.DateColumn(
                     "開始日",
@@ -288,19 +282,30 @@ def render_update_delete_section(benchmark_periods: list[BenchmarkPeriod]) -> No
                 ),
                 "period_month_count": st.column_config.NumberColumn(
                     "期間月数",
-                    help="period_start_date / period_end_date から保存時に再計算します。",
+                    help="開始日・終了日 から保存時に再計算します。",
                     min_value=1,
                     step=1,
                     format="%d",
+                    disabled=True,
                 ),
             },
         )
 
-        submitted = st.form_submit_button(
-            "更新・削除を保存",
-            type="primary",
-            use_container_width=True,
-        )
+        col1, col2 = st.columns([3, 1])
+
+        with col2:
+            submitted = st.form_submit_button(
+                "更新・削除を保存",
+                type="primary",
+                use_container_width=True,
+            )
+
+    st.caption(
+        "※ 削除列・開始日列・終了日列のみ変更可能です。その他の列についてはプログラム側で生成されます。"
+    )
+    st.caption(
+        "※ セルを変更した後は、一度Enterキーを押すか、別のセルをクリックして確定させてから保存ボタンを押してください。"
+    )
 
     if not submitted:
         return
