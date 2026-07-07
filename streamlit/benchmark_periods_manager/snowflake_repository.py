@@ -41,11 +41,11 @@ def init_table() -> None:
     with conn.cursor() as cursor:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS RAW.RAW_BENCHMARK_PERIODS (
-                BENCHMARK_PERIOD_KEY STRING,
-                BENCHMARK_PERIOD_NAME STRING,
-                PERIOD_START_DATE DATE,
-                PERIOD_END_DATE DATE,
-                PERIOD_MONTH_COUNT INT
+                BENCHMARK_PERIOD_KEY STRING NOT NULL,
+                BENCHMARK_PERIOD_NAME STRING NOT NULL,
+                PERIOD_START_DATE DATE NOT NULL,
+                PERIOD_END_DATE DATE NOT NULL,
+                PERIOD_MONTH_COUNT INT NOT NULL
             )
             """)
 
