@@ -2,6 +2,8 @@
 
 ## Snowflakeでの環境構築手順
 
+※ データベース名・スキーマ名は環境に応じて変更する。
+
 ### 1. スキーマの作成
 
 以下のクエリを実行する。
@@ -43,7 +45,13 @@ CREATE TABLE IF NOT EXISTS DATABASE_NAME.RAW.RAW_BENCHMARK_PERIODS (
     - フォルダ・ファイルの番号の小さい順に実行
 4. marts配下のSQL（順不同）
 
-### 4. 各種Streamlitアプリのデプロイ
+### 4. マートテーブルの作成
+
+`operations_queries/最終マートテーブル作成用.sql`を実行する。
+
+※ このクエリはRAW層のテーブル内のデータ更新があるたびに実行する必要がある。
+
+### 5. 各種Streamlitアプリのデプロイ
 
 各種Streamlitアプリをデプロイする。
 
