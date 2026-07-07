@@ -269,25 +269,25 @@ def render_update_delete_section(benchmark_periods: list[BenchmarkPeriod]) -> No
                     default=False,
                 ),
                 "benchmark_period_key": st.column_config.TextColumn(
-                    "benchmark_period_key",
+                    "過去実績期間キー",
                     help="period_start_date / period_end_date から保存時に再生成します。",
                 ),
                 "benchmark_period_name": st.column_config.TextColumn(
-                    "benchmark_period_name",
+                    "過去実績期間名",
                     help="period_start_date / period_end_date から保存時に再生成します。",
                 ),
                 "period_start_date": st.column_config.DateColumn(
-                    "period_start_date",
+                    "開始日",
                     format="YYYY-MM-DD",
                     required=True,
                 ),
                 "period_end_date": st.column_config.DateColumn(
-                    "period_end_date",
+                    "終了日",
                     format="YYYY-MM-DD",
                     required=True,
                 ),
                 "period_month_count": st.column_config.NumberColumn(
-                    "period_month_count",
+                    "期間月数",
                     help="period_start_date / period_end_date から保存時に再計算します。",
                     min_value=1,
                     step=1,
