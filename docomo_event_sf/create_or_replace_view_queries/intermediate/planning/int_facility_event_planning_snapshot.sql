@@ -1,11 +1,5 @@
-
-  create or replace   view HARATO.INT.int_facility_event_planning_snapshot
-  
-  
-  
-  
-  as (
-    with date_flags as (
+create or replace view HARATO.INT.int_facility_event_planning_snapshot as (
+with date_flags as (
     select s_d_m.date_flag
     from HARATO.STG.stg_date_master as s_d_m
     group by s_d_m.date_flag
@@ -25,7 +19,7 @@ all_pattern as (
         d_f.date_flag,
         i_f_e_d_m.decile_rank
     from HARATO.STG.stg_facility_master as s_f_m
-    cross join HARATO.INT.int_benchmark_periods as i_b_p
+    cross join HARATO.RAW.RAW_BENCHMARK_PERIODS as i_b_p
     cross join date_flags as d_f
     left join HARATO.INT.int_facility_event_decile_mapping as i_f_e_d_m
         on s_f_m.facility_code = i_f_e_d_m.facility_code
@@ -90,5 +84,4 @@ select
         else base.max_performance
     end as challenge_target
 from base
-  );
-
+);
