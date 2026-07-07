@@ -11,14 +11,13 @@ from config import PAGE_TITLE
 from entities import BenchmarkPeriod
 from snowflake_repository import (
     init_table,
-    apply_benchmark_period_changes,
+    apply_benchmark_period_updates_and_deletes,
     clear_benchmark_periods_cache,
     fetch_benchmark_periods,
     insert_benchmark_period,
 )
 
 FLASH_MESSAGE_KEY = "flash_message"
-EDITOR_SYNCING_KEY = "benchmark_period_editor_syncing"
 
 
 def render_flash_message() -> None:
@@ -26,14 +25,6 @@ def render_flash_message() -> None:
 
     if message:
         st.success(message)
-
-
-def mark_editor_syncing() -> None:
-    st.session_state[EDITOR_SYNCING_KEY] = True
-
-
-def consume_editor_syncing() -> bool:
-    return bool(st.session_state.pop(EDITOR_SYNCING_KEY, False))
 
 
 def to_date_or_none(value: Any) -> date | None:
@@ -100,17 +91,30 @@ def validate_period_dates(
 
 def validate_update_delete_inputs(
     edited_df: pd.DataFrame,
-) -> tuple[list[str], list[BenchmarkPeriod]]:
+    benchmark_periods: list[BenchmarkPeriod],
+) -> tuple[list[str], list[tuple[str, BenchmarkPeriod]], list[str]]:
     errors: list[str] = []
-    after_periods: list[BenchmarkPeriod] = []
+    update_rows: list[tuple[str, BenchmarkPeriod]] = []
+    delete_keys: list[str] = []
+    final_periods: list[BenchmarkPeriod] = []
+
+    before_periods_by_key = {
+        period.benchmark_period_key: period for period in benchmark_periods
+    }
 
     df = edited_df.dropna(how="all").copy()
 
-    for index, row in df.reset_index(drop=True).iterrows():
-        row_no = index + 1
+    for row_no, (_, row) in enumerate(df.iterrows(), start=1):
+        original_benchmark_period_key = str(row.get("benchmark_period_key"))
+        before_period = before_periods_by_key.get(original_benchmark_period_key)
         should_delete = bool(row.get("delete"))
 
+        if before_period is None:
+            errors.append(f"{row_no}行目: benchmark_period_key が不正です。")
+            continue
+
         if should_delete:
+            delete_keys.append(original_benchmark_period_key)
             continue
 
         period_start_date = to_date_or_none(row.get("period_start_date"))
@@ -130,15 +134,28 @@ def validate_update_delete_inputs(
         assert period_start_date is not None
         assert period_end_date is not None
 
-        after_periods.append(
-            build_benchmark_period(
-                period_start_date,
-                period_end_date,
+        after_period = build_benchmark_period(
+            period_start_date,
+            period_end_date,
+        )
+
+        final_periods.append(after_period)
+
+        if (
+            before_period.period_start_date == after_period.period_start_date
+            and before_period.period_end_date == after_period.period_end_date
+        ):
+            continue
+
+        update_rows.append(
+            (
+                original_benchmark_period_key,
+                after_period,
             )
         )
 
     duplicated_keys = (
-        pd.Series([period.benchmark_period_key for period in after_periods])
+        pd.Series([period.benchmark_period_key for period in final_periods])
         .loc[lambda series: series.duplicated()]
         .drop_duplicates()
         .tolist()
@@ -147,7 +164,7 @@ def validate_update_delete_inputs(
     for key in duplicated_keys:
         errors.append(f"benchmark_period_key が重複しています: {key}")
 
-    return errors, after_periods
+    return errors, update_rows, delete_keys
 
 
 def render_add_section(existing_periods: list[BenchmarkPeriod]) -> None:
@@ -212,8 +229,7 @@ def render_add_section(existing_periods: list[BenchmarkPeriod]) -> None:
             return
 
     st.session_state[FLASH_MESSAGE_KEY] = (
-        "追加しました。"
-        f" benchmark_period_key: {benchmark_period.benchmark_period_key}"
+        "追加しました。" f" 開始日：{period_start_date}・終了日：{period_end_date}"
     )
 
     st.rerun()
@@ -289,7 +305,9 @@ def render_update_delete_section(benchmark_periods: list[BenchmarkPeriod]) -> No
     if not submitted:
         return
 
-    errors, after_periods = validate_update_delete_inputs(edited_df)
+    errors, update_rows, delete_keys = validate_update_delete_inputs(
+        edited_df, benchmark_periods
+    )
 
     if errors:
         st.error("保存できません。入力内容を確認してください。")
@@ -299,9 +317,9 @@ def render_update_delete_section(benchmark_periods: list[BenchmarkPeriod]) -> No
 
     try:
         with st.spinner("Snowflakeへ保存中です..."):
-            result = apply_benchmark_period_changes(
-                benchmark_periods,
-                after_periods,
+            result = apply_benchmark_period_updates_and_deletes(
+                update_rows,
+                delete_keys,
             )
             clear_benchmark_periods_cache()
 
@@ -311,10 +329,7 @@ def render_update_delete_section(benchmark_periods: list[BenchmarkPeriod]) -> No
         return
 
     st.session_state[FLASH_MESSAGE_KEY] = (
-        "保存しました。"
-        f" 追加: {result['inserted']}件"
-        f" / 更新: {result['updated']}件"
-        f" / 削除: {result['deleted']}件"
+        "保存しました。" f"更新: {result['updated']}件・削除: {result['deleted']}件"
     )
 
     st.rerun()
