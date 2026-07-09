@@ -166,16 +166,6 @@ REGIONAL_OFFICE_SCHEDULE_CONSTRAINT = DatasetSpec(
     caption="支社別スケジュール制限マスタの「支社別スケジュール制限マスタ」シート(A:C)を RAW_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER へ",
 )
 
-EXCLUDED_FACILITY = DatasetSpec(
-    label="除外対象施設マスタ",
-    table="RAW_EXCLUDED_FACILITY_MASTER",
-    layout="flat",
-    sheet="除外対象施設マスタ",
-    rename={"施設名": "FACILITY_NAME"},
-    type_map={"施設名": "VARCHAR"},
-    caption="除外対象施設マスタの「除外対象施設マスタ」シート(A:A)を RAW_EXCLUDED_FACILITY_MASTER へ",
-)
-
 TARGET_CPA = DatasetSpec(
     label="施設別目標CPAマスタ",
     table="RAW_FACILITY_TARGET_CPA_MASTER",
@@ -198,7 +188,6 @@ DATASETS = {
         DATE_FLAG,
         FACILITY_SCHEDULE_CONSTRAINT,
         REGIONAL_OFFICE_SCHEDULE_CONSTRAINT,
-        EXCLUDED_FACILITY,
         TARGET_CPA,
     ]
 }
