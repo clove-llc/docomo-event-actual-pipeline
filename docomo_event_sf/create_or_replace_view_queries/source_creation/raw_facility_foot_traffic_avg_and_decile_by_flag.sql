@@ -1,6 +1,6 @@
 create or replace view HARATO.RAW.raw_facility_foot_traffic_avg_and_decile_by_flag as
 (
-    with
+with
 -- s1: 01_日別施設別（SENSE）を縦持ち化（施設×日 の SENSE 日次値）
 sense_src as (
     select t.*, object_construct(*) as obj
@@ -81,7 +81,7 @@ deciled as (
 )
 select
     facility_code,
-    facility_name,round(max(case when date_flag = 'GW' then foot_traffic_avg end)) as gw_foot_traffic_avg,round(max(case when date_flag = 'お盆' then foot_traffic_avg end)) as obon_foot_traffic_avg,round(max(case when date_flag = '三連休' then foot_traffic_avg end)) as three_day_holiday_foot_traffic_avg,round(max(case when date_flag = '正月' then foot_traffic_avg end)) as new_year_foot_traffic_avg,round(max(case when date_flag = '通常土日' then foot_traffic_avg end)) as regular_weekend_foot_traffic_avg,round(max(case when date_flag = '年末' then foot_traffic_avg end)) as year_end_foot_traffic_avg,round(max(case when date_flag = '飛び石祝日' then foot_traffic_avg end)) as bridge_holiday_foot_traffic_avg,round(max(case when date_flag = '平日' then foot_traffic_avg end)) as weekday_foot_traffic_avg,round(max(case when date_flag = 'ブラックフライデー' then foot_traffic_avg end)) as black_friday_foot_traffic_avg,
+    facility_name,(round(max(case when date_flag = 'GW' then foot_traffic_avg end)))::number(38,0) as gw_foot_traffic_avg,(round(max(case when date_flag = 'お盆' then foot_traffic_avg end)))::number(38,0) as obon_foot_traffic_avg,(round(max(case when date_flag = '三連休' then foot_traffic_avg end)))::number(38,0) as three_day_holiday_foot_traffic_avg,(round(max(case when date_flag = '正月' then foot_traffic_avg end)))::number(38,0) as new_year_foot_traffic_avg,(round(max(case when date_flag = '通常土日' then foot_traffic_avg end)))::number(38,0) as regular_weekend_foot_traffic_avg,(round(max(case when date_flag = '年末' then foot_traffic_avg end)))::number(38,0) as year_end_foot_traffic_avg,(round(max(case when date_flag = '飛び石祝日' then foot_traffic_avg end)))::number(38,0) as bridge_holiday_foot_traffic_avg,(round(max(case when date_flag = '平日' then foot_traffic_avg end)))::number(38,0) as weekday_foot_traffic_avg,(round(max(case when date_flag = 'ブラックフライデー' then foot_traffic_avg end)))::number(38,0) as black_friday_foot_traffic_avg,
     max(case when date_flag = 'GW' then decile_rank end) as gw_decile_rank,
     max(case when date_flag = 'お盆' then decile_rank end) as obon_decile_rank,
     max(case when date_flag = '三連休' then decile_rank end) as three_day_holiday_decile_rank,

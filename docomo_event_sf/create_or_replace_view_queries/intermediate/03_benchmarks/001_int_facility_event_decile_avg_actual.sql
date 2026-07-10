@@ -34,7 +34,7 @@ select
     decile_rank,
     count(*) as actual_days,
     sum(actual) as total_actual,
-    round(cast((avg(cast(actual as float))) as number(38, 18)), 0) as avg_actual  -- BQ は AVG(INT64)→FLOAT64。型を合わせる
+    round(avg(actual)) as avg_actual
 from joined
 group by
     benchmark_period_key,

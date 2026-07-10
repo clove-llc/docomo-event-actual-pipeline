@@ -8,7 +8,7 @@ select
     f_d_z.month,
     f_d_z.week_number_monthly,
     f_d_z.date_flag,
-    {{ round_bq('avg(f_d_z.z_score)', 1) }} as avg_z_score
+    round(avg(f_d_z.z_score), 1) as avg_z_score
 from {{ ref('stg_facility_daily_deviation_zscore') }} as f_d_z
 left join {{ ref('stg_facility_master') }} as f
     on f_d_z.facility_code = f.facility_code

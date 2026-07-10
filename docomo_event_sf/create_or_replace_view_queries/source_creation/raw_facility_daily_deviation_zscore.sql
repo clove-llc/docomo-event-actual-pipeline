@@ -1,5 +1,5 @@
 create or replace view HARATO.RAW.raw_facility_daily_deviation_zscore as (
-    with
+with
 -- s1: 01_日別施設別（SENSE）を縦持ち化し、日付フラグを付与
 seasonal_src as (
     select t.*, object_construct(*) as obj
@@ -65,7 +65,7 @@ select
     event_date                                                                      as date,
     facility_code,
     facility_name,
-    case when v is null or v <= 0 then 1.0 else v end                               as z_score,
+    (case when v is null or v <= 0 then 1.0 else v end)::number(38,1)               as z_score,
     month(event_date)                                                               as month,
     floor((day(event_date) - 1 + (dayofweekiso(date_trunc('month', event_date)) - 1)) / 7) + 1
                                                                                     as week_number_monthly,

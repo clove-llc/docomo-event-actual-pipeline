@@ -103,7 +103,7 @@ select
     facility_name,
     {%- for jp, en in flags %}
     {#- 平均は整数丸めで出力（Excelのデシルシート＝ROUND(SUMIFS/COUNTIFS)）。デシルは丸め前の順位で算出 -#}
-    round(max(case when date_flag = '{{ jp }}' then foot_traffic_avg end)) as {{ en }}_foot_traffic_avg,
+    (round(max(case when date_flag = '{{ jp }}' then foot_traffic_avg end)))::number(38,0) as {{ en }}_foot_traffic_avg,
     {%- endfor %}
     {%- for jp, en in flags %}
     max(case when date_flag = '{{ jp }}' then decile_rank end) as {{ en }}_decile_rank{{ "," if not loop.last }}
