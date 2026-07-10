@@ -35,7 +35,7 @@ SELECT
   decile_rank,
   COUNT(*) AS actual_days,
   SUM(actual) AS total_actual,
-  ROUND(AVG(actual)) AS avg_actual
+  CAST(ROUND(AVG(actual)) AS INT64) AS avg_actual
 FROM joined
 GROUP BY
   benchmark_period_key,

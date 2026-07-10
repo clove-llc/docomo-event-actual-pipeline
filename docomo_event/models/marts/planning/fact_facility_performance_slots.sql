@@ -58,7 +58,7 @@ SELECT
     WHEN b.date_flag = 'GW' OR b.date_flag = 'お盆' THEN f_e_p_s_all_period.all_period_p50
     ELSE f_e_p_s.p50
   END AS p50,
-  ROUND(CASE
+  CAST(ROUND(CASE
     WHEN b.date_flag = 'GW' OR b.date_flag = 'お盆' THEN f_e_p_s_all_period.all_period_standard_target
     ELSE f_e_p_s.standard_target
   END * COALESCE(
@@ -66,8 +66,8 @@ SELECT
     i_f_m_d_z.avg_z_score,
     i_f_m_3h.avg_z_score,
     i_f_m_d_g_z.avg_z_score
-  )) AS standard_target_seasonal,
-  ROUND(CASE
+  )) AS INT64) AS standard_target_seasonal,
+  CAST(ROUND(CASE
     WHEN b.date_flag = 'GW' OR b.date_flag = 'お盆' THEN f_e_p_s_all_period.all_period_challenge_target
     ELSE f_e_p_s.challenge_target
   END * COALESCE(
@@ -75,8 +75,8 @@ SELECT
     i_f_m_d_z.avg_z_score,
     i_f_m_3h.avg_z_score,
     i_f_m_d_g_z.avg_z_score
-  )) AS challenge_target_seasonal,
-  ROUND(CASE
+  )) AS INT64) AS challenge_target_seasonal,
+  CAST(ROUND(CASE
     WHEN b.date_flag = 'GW' OR b.date_flag = 'お盆' THEN f_e_p_s_all_period.all_period_p50
     ELSE f_e_p_s.p50
   END * COALESCE(
@@ -84,7 +84,7 @@ SELECT
     i_f_m_d_z.avg_z_score,
     i_f_m_3h.avg_z_score,
     i_f_m_d_g_z.avg_z_score
-  )) AS p50_seasonal
+  )) AS INT64) AS p50_seasonal
 FROM base AS b
 LEFT JOIN {{ ref("int_facility_event_planning_snapshot") }} AS f_e_p_s
   ON
