@@ -7,7 +7,7 @@ select distinct
     f.facility_name,
     f.month,
     f.date_flag,
-    {{ round_bq('avg(avg_z_score)', 1) }} as avg_z_score
+    round(avg(avg_z_score), 1) as avg_z_score
 from {{ ref('int_facility_monthly_weekday_dateflag_deviation_zscore') }} as f
 group by
     f.facility_code,
