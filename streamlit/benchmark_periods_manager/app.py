@@ -1,30 +1,37 @@
 from __future__ import annotations
 
-from dataclasses import asdict
-from datetime import date
-from typing import Any
 
 import pandas as pd
 import streamlit as st
+
+try:
+    from common.snowflake_client import fetch_current_database_name, fetch_schema_names
+    from common.connection_settings import ConnectionSettings
+except ModuleNotFoundError:
+    from pathlib import Path
+    import sys
+
+    streamlit_root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(streamlit_root))
+
+    from common.snowflake_client import fetch_current_database_name, fetch_schema_names
+    from common.connection_settings import ConnectionSettings
+
+from dataclasses import asdict
+from datetime import date
+from typing import Any
 
 from config import PAGE_TITLE
 from entities import BenchmarkPeriod
 from snowflake_repository import (
     init_table,
     apply_benchmark_period_updates_and_deletes,
-    clear_benchmark_periods_cache,
+    clear_snowflake_cache,
     fetch_benchmark_periods,
     insert_benchmark_period,
 )
 
 FLASH_MESSAGE_KEY = "flash_message"
-
-
-def render_flash_message() -> None:
-    message = st.session_state.pop(FLASH_MESSAGE_KEY, None)
-
-    if message:
-        st.success(message)
 
 
 def to_date_or_none(value: Any) -> date | None:
@@ -35,6 +42,15 @@ def to_date_or_none(value: Any) -> date | None:
         return pd.to_datetime(value).date()
     except Exception:
         return None
+
+
+def to_editable_dataframe(periods: list[BenchmarkPeriod]) -> pd.DataFrame:
+    df = pd.DataFrame(
+        [asdict(period) for period in periods],
+        columns=list(BenchmarkPeriod.__dataclass_fields__.keys()),
+    )
+    df.insert(0, "delete", False)
+    return df
 
 
 def build_benchmark_period(
@@ -54,15 +70,6 @@ def build_benchmark_period(
         - period_start_date.month
         + 1,
     )
-
-
-def to_editable_dataframe(periods: list[BenchmarkPeriod]) -> pd.DataFrame:
-    df = pd.DataFrame(
-        [asdict(period) for period in periods],
-        columns=list(BenchmarkPeriod.__dataclass_fields__.keys()),
-    )
-    df.insert(0, "delete", False)
-    return df
 
 
 def validate_period_dates(
@@ -167,7 +174,68 @@ def validate_update_delete_inputs(
     return errors, update_rows, delete_keys
 
 
-def render_add_section(existing_periods: list[BenchmarkPeriod]) -> None:
+def render_flash_message() -> None:
+    message = st.session_state.pop(FLASH_MESSAGE_KEY, None)
+
+    if message:
+        st.success(message)
+
+
+def render_connection_settings_section(
+    database_name: str,
+    schema_names: list[str],
+) -> ConnectionSettings | None:
+    current_settings = st.session_state.get("applied_connection_settings")
+
+    default_database_name = (
+        current_settings.database_name if current_settings else database_name
+    )
+    default_raw_schema = current_settings.raw_schema if current_settings else "RAW"
+
+    with st.form("connection_settings_form"):
+        (
+            col_database_name,
+            col_raw_schema,
+        ) = st.columns(2)
+
+        with col_database_name:
+            selected_database_name = st.text_input(
+                "データベース名",
+                value=default_database_name,
+            )
+
+        with col_raw_schema:
+            raw_schema = st.selectbox(
+                "RAWスキーマ",
+                schema_names,
+                index=(
+                    schema_names.index(default_raw_schema)
+                    if default_raw_schema in schema_names
+                    else 0
+                ),
+            )
+
+        submitted = st.form_submit_button(
+            "Snowflakeから読み込み",
+            type="primary",
+            use_container_width=True,
+        )
+
+    if submitted:
+        st.session_state["applied_connection_settings"] = ConnectionSettings(
+            database_name=selected_database_name,
+            mart_schema="",
+            int_schema="",
+            stg_schema="",
+            raw_schema=raw_schema,
+        )
+
+    return st.session_state.get("applied_connection_settings")
+
+
+def render_add_section(
+    connection_settings: ConnectionSettings, existing_periods: list[BenchmarkPeriod]
+) -> None:
     st.subheader("追加")
 
     with st.form("add_benchmark_period_form"):
@@ -221,8 +289,8 @@ def render_add_section(existing_periods: list[BenchmarkPeriod]) -> None:
 
     with st.spinner("Snowflakeへ追加中です..."):
         try:
-            insert_benchmark_period(benchmark_period)
-            clear_benchmark_periods_cache()
+            insert_benchmark_period(connection_settings, benchmark_period)
+            clear_snowflake_cache()
         except Exception as exc:  # noqa: BLE001
             st.error("Snowflakeへの追加に失敗しました。")
             st.exception(exc)
@@ -235,7 +303,9 @@ def render_add_section(existing_periods: list[BenchmarkPeriod]) -> None:
     st.rerun()
 
 
-def render_update_delete_section(benchmark_periods: list[BenchmarkPeriod]) -> None:
+def render_update_delete_section(
+    connection_settings: ConnectionSettings, benchmark_periods: list[BenchmarkPeriod]
+) -> None:
     st.subheader("更新・削除")
 
     if not benchmark_periods:
@@ -323,10 +393,11 @@ def render_update_delete_section(benchmark_periods: list[BenchmarkPeriod]) -> No
     try:
         with st.spinner("Snowflakeへ保存中です..."):
             result = apply_benchmark_period_updates_and_deletes(
+                connection_settings,
                 update_rows,
                 delete_keys,
             )
-            clear_benchmark_periods_cache()
+            clear_snowflake_cache()
 
     except Exception as exc:  # noqa: BLE001
         st.error("Snowflakeへの保存に失敗しました。")
@@ -344,23 +415,33 @@ def main() -> None:
     st.set_page_config(page_title=PAGE_TITLE, layout="wide")
     st.title(PAGE_TITLE)
 
-    init_table()
+    st.divider()
+    database_name = fetch_current_database_name()
+    schema_names = fetch_schema_names()
+
+    connection_settings = render_connection_settings_section(
+        database_name,
+        schema_names,
+    )
+
+    if connection_settings is None:
+        st.info("接続設定を確認し、「Snowflakeから読み込み」を押してください。")
+        return
+
+    st.caption("現在の読み込み設定: " f"RAW={connection_settings.raw_schema}")
+
+    init_table(connection_settings)
     render_flash_message()
 
-    try:
-        benchmark_periods = fetch_benchmark_periods()
-    except Exception as exc:  # noqa: BLE001
-        st.error("Snowflakeから基準期間マスタを取得できませんでした。")
-        st.exception(exc)
-        st.stop()
+    benchmark_periods = fetch_benchmark_periods(connection_settings)
 
     col_add, col_update_delete = st.columns([1, 3])
 
     with col_add:
-        render_add_section(benchmark_periods)
+        render_add_section(connection_settings, benchmark_periods)
 
     with col_update_delete:
-        render_update_delete_section(benchmark_periods)
+        render_update_delete_section(connection_settings, benchmark_periods)
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ import streamlit as st
 import datetime
 
 from datetime import date
-from typing import Any, cast
+from typing import Any
 
 from config import SNOWFLAKE_CACHE_TTL_SECONDS
 from entities import (
@@ -12,20 +12,28 @@ from entities import (
     FacilityDetail,
     RegionalOfficeScheduleConstraint,
 )
+from common.connection_settings import ConnectionSettings
+from common.snowflake_client import (
+    session,
+    conn,
+    table_name,
+    fetch_all,
+)
 
-def to_int_or_none(value) -> int | None:
+# ====================
+# データ型の変換
+# ====================
+
+
+def _to_int_or_none(value) -> int | None:
     return None if value is None else int(value)
 
 
-def to_str_or_none(value) -> str | None:
+def _to_str_or_none(value) -> str | None:
     return None if value is None else str(value)
 
 
-def to_bool_or_none(value) -> bool | None:
-    return None if value is None else bool(value)
-
-
-def to_date(value: Any) -> date:
+def _to_date(value: Any) -> date:
     if isinstance(value, datetime.datetime):
         return value.date()
 
@@ -35,50 +43,71 @@ def to_date(value: Any) -> date:
     return date.fromisoformat(str(value)[:10])
 
 
-def _fetch_all(
-    sql: str,
-    params: list[Any] | None = None,
-) -> list[tuple[Any, ...]]:
-    conn = st.connection("snowflake")
+# ====================
+# Snowflake からのデータ取得
+# ====================
 
-    with conn.cursor() as cursor:
-        if params is None:
-            cursor.execute(sql)
-        else:
-            cursor.execute(sql, params)
 
-        return cast(list[tuple[Any, ...]], cursor.fetchall())
+def clear_snowflake_cache() -> None:
+    """Snowflake取得系のキャッシュをクリアする。"""
+    fetch_benchmark_period_keys.clear()
+    fetch_regional_office_schedule_constraints.clear()
+    fetch_facility_daily_target_details.clear()
+    fetch_facility_details.clear()
+    fetch_date_master.clear()
 
 
 @st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
-def fetch_benchmark_period_keys() -> list[str]:
+def fetch_benchmark_period_keys(connection_settings: ConnectionSettings) -> list[str]:
     """Snowflakeから過去実績対象期間の一覧を取得する。"""
-    conn = st.connection("snowflake")
+    target_table = table_name(
+        "INT_BENCHMARK_PERIODS",
+        database=connection_settings.database_name,
+        schema=connection_settings.int_schema,
+        session=session,
+        conn=conn,
+    )
 
-    with conn.cursor() as cursor:
-        cursor.execute("""
+    rows = fetch_all(
+        f"""
             SELECT DISTINCT
                 BENCHMARK_PERIOD_KEY
-            FROM INT.INT_BENCHMARK_PERIODS
+            FROM {target_table}
             ORDER BY BENCHMARK_PERIOD_KEY DESC
-            """)
-        rows = cursor.fetchall()
+            """,
+        [],
+        session=session,
+        conn=conn,
+    )
 
     return [str(row[0]) for row in rows]
 
 
 @st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
-def fetch_regional_office_schedule_constraints() -> (
-    list[RegionalOfficeScheduleConstraint]
-):
+def fetch_regional_office_schedule_constraints(
+    connection_settings: ConnectionSettings,
+) -> list[RegionalOfficeScheduleConstraint]:
     """Snowflakeから支社別スケジュール制限マスタの情報を取得する。"""
-    rows = _fetch_all("""
+    target_table = table_name(
+        "STG_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER",
+        database=connection_settings.database_name,
+        schema=connection_settings.stg_schema,
+        session=session,
+        conn=conn,
+    )
+
+    rows = fetch_all(
+        f"""
         SELECT
             REGIONAL_OFFICE,
             DAILY_EVENT_LIMIT,
             OPERATING_DAYS
-        FROM STG.STG_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER
-        """)
+        FROM {target_table}
+        """,
+        [],
+        session=session,
+        conn=conn,
+    )
 
     return [
         RegionalOfficeScheduleConstraint(
@@ -92,14 +121,23 @@ def fetch_regional_office_schedule_constraints() -> (
 
 @st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_facility_daily_target_details(
+    connection_settings: ConnectionSettings,
     benchmark_period_key: str,
     year: int,
     month: int,
     regional_office_name: str,
 ) -> list[FacilityDailyTargetDetail]:
     """Snowflakeから過去実績対象期間の実績をもとに算出された対象支社の目標値を取得する。"""
-    rows = _fetch_all(
-        """
+    target_table = table_name(
+        "FACT_FACILITY_PERFORMANCE_SLOTS_TABLE",
+        database=connection_settings.database_name,
+        schema=connection_settings.mart_schema,
+        session=session,
+        conn=conn,
+    )
+
+    rows = fetch_all(
+        f"""
         SELECT
             FACILITY_CODE,
             FACILITY_NAME,
@@ -110,7 +148,7 @@ def fetch_facility_daily_target_details(
             DATE_FLAG,
             CPA,
             STANDARD_TARGET_SEASONAL
-        FROM MART.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE
+        FROM {target_table}
         WHERE BENCHMARK_PERIOD_KEY = ?
           AND EXTRACT(YEAR FROM DATE) = ?
           AND EXTRACT(MONTH FROM DATE) = ?
@@ -123,6 +161,8 @@ def fetch_facility_daily_target_details(
             month,
             regional_office_name,
         ],
+        session=session,
+        conn=conn,
     )
 
     return [
@@ -131,10 +171,10 @@ def fetch_facility_daily_target_details(
             facility_name=str(row[1]),
             po_level=str(row[2]),
             regional_office=str(row[3]),
-            branch_office=to_str_or_none(row[4]),
-            date=to_date(row[5]),
+            branch_office=_to_str_or_none(row[4]),
+            date=_to_date(row[5]),
             date_flag=str(row[6]),
-            cpa=to_int_or_none(row[7]),
+            cpa=_to_int_or_none(row[7]),
             target_value=int(row[8]),
         )
         for row in rows
@@ -143,14 +183,31 @@ def fetch_facility_daily_target_details(
 
 @st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_facility_details(
+    connection_settings: ConnectionSettings,
     benchmark_period_key: str,
     year: int,
     month: int,
     regional_office_name: str,
 ) -> list[FacilityDetail]:
     """Snowflakeから指定された支社の施設詳細情報を取得する。"""
-    rows = _fetch_all(
-        """
+    target_table = table_name(
+        "FACT_FACILITY_PERFORMANCE_SLOTS_TABLE",
+        database=connection_settings.database_name,
+        schema=connection_settings.mart_schema,
+        session=session,
+        conn=conn,
+    )
+
+    schedule_table = table_name(
+        "STG_FACILITY_SCHEDULE_CONSTRAINTS_MASTER",
+        database=connection_settings.database_name,
+        schema=connection_settings.stg_schema,
+        session=session,
+        conn=conn,
+    )
+
+    rows = fetch_all(
+        f"""
         SELECT
             F_F_P_S.FACILITY_CODE,
             F_F_P_S.FACILITY_NAME,
@@ -170,8 +227,8 @@ def fetch_facility_details(
             ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = '年末' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_year_end_standard_target_seasonal,
             ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = 'ブラックフライデー' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_black_friday_standard_target_seasonal
         FROM
-            MART.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE AS F_F_P_S
-            LEFT JOIN STG.STG_FACILITY_SCHEDULE_CONSTRAINTS_MASTER AS F_S_C_M ON F_F_P_S.FACILITY_CODE = F_S_C_M.FACILITY_CODE
+            {target_table} AS F_F_P_S
+            LEFT JOIN {schedule_table} AS F_S_C_M ON F_F_P_S.FACILITY_CODE = F_S_C_M.FACILITY_CODE
         WHERE F_F_P_S.BENCHMARK_PERIOD_KEY = ?
             AND EXTRACT(YEAR FROM F_F_P_S.DATE) = ?
             AND EXTRACT(MONTH FROM F_F_P_S.DATE) = ?
@@ -193,6 +250,8 @@ def fetch_facility_details(
             month,
             regional_office_name,
         ],
+        session=session,
+        conn=conn,
     )
 
     return [
@@ -201,34 +260,44 @@ def fetch_facility_details(
             facility_name=str(row[1]),
             po_level=str(row[2]),
             regional_office=str(row[3]),
-            branch_office=to_str_or_none(row[4]),
-            cpa=to_int_or_none(row[5]),
-            monthly_event_limit=to_str_or_none(row[6]),
-            operating_days=to_str_or_none(row[7]),
-            avg_weekday_standard_target_seasonal=to_int_or_none(row[8]),
-            avg_regular_weekend_standard_target_seasonal=to_int_or_none(row[9]),
-            avg_three_day_holiday_standard_target_seasonal=to_int_or_none(row[10]),
-            avg_bridge_holiday_standard_target_seasonal=to_int_or_none(row[11]),
-            avg_gw_standard_target_seasonal=to_int_or_none(row[12]),
-            avg_obon_standard_target_seasonal=to_int_or_none(row[13]),
-            avg_new_year_standard_target_seasonal=to_int_or_none(row[14]),
-            avg_year_end_standard_target_seasonal=to_int_or_none(row[15]),
-            avg_black_friday_standard_target_seasonal=to_int_or_none(row[16]),
+            branch_office=_to_str_or_none(row[4]),
+            cpa=_to_int_or_none(row[5]),
+            monthly_event_limit=_to_str_or_none(row[6]),
+            operating_days=_to_str_or_none(row[7]),
+            avg_weekday_standard_target_seasonal=_to_int_or_none(row[8]),
+            avg_regular_weekend_standard_target_seasonal=_to_int_or_none(row[9]),
+            avg_three_day_holiday_standard_target_seasonal=_to_int_or_none(row[10]),
+            avg_bridge_holiday_standard_target_seasonal=_to_int_or_none(row[11]),
+            avg_gw_standard_target_seasonal=_to_int_or_none(row[12]),
+            avg_obon_standard_target_seasonal=_to_int_or_none(row[13]),
+            avg_new_year_standard_target_seasonal=_to_int_or_none(row[14]),
+            avg_year_end_standard_target_seasonal=_to_int_or_none(row[15]),
+            avg_black_friday_standard_target_seasonal=_to_int_or_none(row[16]),
         )
         for row in rows
     ]
 
 
 @st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
-def fetch_date_master(year: int, month: int) -> list[DateDetail]:
+def fetch_date_master(
+    connection_settings: ConnectionSettings, year: int, month: int
+) -> list[DateDetail]:
     """Snowflakeから指定された年月の日付マスタ情報を取得する。"""
-    rows = _fetch_all(
-        """
+    target_table = table_name(
+        "STG_DATE_MASTER",
+        database=connection_settings.database_name,
+        schema=connection_settings.stg_schema,
+        session=session,
+        conn=conn,
+    )
+
+    rows = fetch_all(
+        f"""
         SELECT
             DATE,
             WEEKDAY_NAME_AND_WEEK_NUMBER_MONTHLY,
             DATE_FLAG
-        FROM STG.STG_DATE_MASTER
+        FROM {target_table}
         WHERE YEAR = ?
           AND MONTH = ?
         ORDER BY DATE
@@ -237,11 +306,13 @@ def fetch_date_master(year: int, month: int) -> list[DateDetail]:
             year,
             month,
         ],
+        session=session,
+        conn=conn,
     )
 
     return [
         DateDetail(
-            date=to_date(row[0]),
+            date=_to_date(row[0]),
             weekday_name_and_week_number_monthly=str(row[1]),
             date_flag=str(row[2]),
         )

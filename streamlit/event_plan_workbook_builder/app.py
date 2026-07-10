@@ -3,8 +3,22 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from dataclasses import asdict, dataclass
+try:
+    from common.snowflake_client import fetch_current_database_name, fetch_schema_names
+    from common.connection_settings import ConnectionSettings
+except ModuleNotFoundError:
+    from pathlib import Path
+    import sys
+
+    streamlit_root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(streamlit_root))
+
+    from common.snowflake_client import fetch_current_database_name, fetch_schema_names
+    from common.connection_settings import ConnectionSettings
+
 from datetime import datetime
+from dataclasses import asdict, dataclass
+from openpyxl import load_workbook
 from config import (
     COPILOT_INPUT_TEMPLATE_PATH,
     COPILOT_OUTPUT_TEMPLATE_PATH,
@@ -13,6 +27,7 @@ from config import (
     REGIONAL_OFFICE_NAMES,
 )
 from snowflake_repository import (
+    clear_snowflake_cache,
     fetch_benchmark_period_keys,
     fetch_date_master,
     fetch_facility_daily_target_details,
@@ -33,8 +48,6 @@ from builders.output_workbook_builder import (
     OutputWorkbookBuilder,
 )
 from utils import calculate_cpa, calculate_input_data_cpa, format_period, parse_int
-
-from openpyxl import load_workbook
 
 
 @dataclass(frozen=True)
@@ -81,12 +94,14 @@ def validate_constraint_inputs(
 
 
 def load_facility_daily_target_details(
+    connection_settings: ConnectionSettings,
     settings: PlanningSettings,
 ) -> list[FacilityDailyTargetDetail]:
     st.subheader("施設別・日別目標値")
 
     try:
         facility_daily_target_details = fetch_facility_daily_target_details(
+            connection_settings,
             settings.benchmark_period_key,
             settings.year,
             settings.month,
@@ -110,12 +125,14 @@ def load_facility_daily_target_details(
 
 
 def load_facility_details(
+    connection_settings: ConnectionSettings,
     settings: PlanningSettings,
 ) -> list[FacilityDetail]:
     st.subheader("対象支社の施設情報")
 
     try:
         facility_details = fetch_facility_details(
+            connection_settings,
             settings.benchmark_period_key,
             settings.year,
             settings.month,
@@ -138,11 +155,15 @@ def load_facility_details(
     return facility_details
 
 
-def load_date_details(settings: PlanningSettings) -> list[DateDetail]:
+def load_date_details(
+    connection_settings: ConnectionSettings, settings: PlanningSettings
+) -> list[DateDetail]:
     st.subheader("日付情報")
 
     try:
-        date_details = fetch_date_master(year=settings.year, month=settings.month)
+        date_details = fetch_date_master(
+            connection_settings, year=settings.year, month=settings.month
+        )
     except Exception as exc:  # noqa: BLE001
         st.error("Snowflakeから日付情報を取得できませんでした。")
         st.exception(exc)
@@ -160,21 +181,87 @@ def load_date_details(settings: PlanningSettings) -> list[DateDetail]:
     return date_details
 
 
-def render_settings_section() -> PlanningSettings:
+def render_connection_settings_section(
+    database_name: str,
+    schema_names: list[str],
+) -> ConnectionSettings | None:
+    current_settings = st.session_state.get("applied_connection_settings")
+
+    default_database_name = (
+        current_settings.database_name if current_settings else database_name
+    )
+    default_mart_schema = current_settings.mart_schema if current_settings else "MART"
+    default_int_schema = current_settings.int_schema if current_settings else "INT"
+    default_stg_schema = current_settings.stg_schema if current_settings else "STG"
+
+    with st.form("connection_settings_form"):
+        col_database_name, col_mart_schema, col_int_schema, col_stg_schema = st.columns(
+            4
+        )
+
+        with col_database_name:
+            selected_database_name = st.text_input(
+                "データベース名",
+                value=default_database_name,
+            )
+
+        with col_mart_schema:
+            mart_schema = st.selectbox(
+                "MARTスキーマ",
+                schema_names,
+                index=(
+                    schema_names.index(default_mart_schema)
+                    if default_mart_schema in schema_names
+                    else 0
+                ),
+            )
+
+        with col_int_schema:
+            int_schema = st.selectbox(
+                "INTスキーマ",
+                schema_names,
+                index=(
+                    schema_names.index(default_int_schema)
+                    if default_int_schema in schema_names
+                    else 0
+                ),
+            )
+
+        with col_stg_schema:
+            stg_schema = st.selectbox(
+                "STGスキーマ",
+                schema_names,
+                index=(
+                    schema_names.index(default_stg_schema)
+                    if default_stg_schema in schema_names
+                    else 0
+                ),
+            )
+
+        submitted = st.form_submit_button(
+            "Snowflakeから読み込み",
+            type="primary",
+            use_container_width=True,
+        )
+
+    if submitted:
+        st.session_state["applied_connection_settings"] = ConnectionSettings(
+            database_name=selected_database_name,
+            mart_schema=mart_schema,
+            int_schema=int_schema,
+            stg_schema=stg_schema,
+            raw_schema="",
+        )
+
+    return st.session_state.get("applied_connection_settings")
+
+
+def render_planning_settings_section(
+    benchmark_period_keys: list[str],
+) -> PlanningSettings:
     st.subheader("計画値")
 
     col_regional_office, col_benchmark_period_keys = st.columns(2)
-
-    try:
-        benchmark_period_keys = fetch_benchmark_period_keys()
-    except Exception as exc:  # noqa: BLE001
-        st.error("Snowflakeから過去実績対象期間を取得できませんでした。")
-        st.exception(exc)
-        st.stop()
-
-    if not benchmark_period_keys:
-        st.error("過去実績対象期間が取得できませんでした。")
-        st.stop()
 
     with col_benchmark_period_keys:
         selected_benchmark_period_key = str(
@@ -225,7 +312,7 @@ def render_settings_section() -> PlanningSettings:
 
 
 def render_constraint_section(
-    settings: PlanningSettings,
+    planning_settings: PlanningSettings,
     regional_office_schedule_constraints: list[RegionalOfficeScheduleConstraint],
 ) -> ConstraintDetail:
     st.subheader("制約条件")
@@ -234,7 +321,7 @@ def render_constraint_section(
         (
             c
             for c in regional_office_schedule_constraints
-            if c.regional_office == settings.regional_office_name
+            if c.regional_office == planning_settings.regional_office_name
         ),
         None,
     )
@@ -244,7 +331,7 @@ def render_constraint_section(
     with col_proposal_period:
         st.text_input(
             "提案期間",
-            value=settings.proposal_period,
+            value=planning_settings.proposal_period,
             disabled=True,
         )
 
@@ -304,7 +391,7 @@ def render_constraint_section(
         st.error(error)
 
     return ConstraintDetail(
-        proposal_period=settings.proposal_period,
+        proposal_period=planning_settings.proposal_period,
         monthly_event_count=daily_event_limit,
         weekday_pattern=weekday_pattern,
         target_pi=target_pi,
@@ -413,25 +500,58 @@ def main() -> None:
     st.title(PAGE_TITLE)
 
     st.divider()
-    settings = render_settings_section()
+    database_name = fetch_current_database_name()
+    schema_names = fetch_schema_names()
 
-    st.divider()
-    regional_office_schedule_constraints = fetch_regional_office_schedule_constraints()
-    constraint_detail = render_constraint_section(
-        settings, regional_office_schedule_constraints
+    connection_settings = render_connection_settings_section(
+        database_name,
+        schema_names,
+    )
+
+    if st.button("Snowflakeキャッシュをクリア", type="secondary"):
+        clear_snowflake_cache()
+        st.success("Snowflakeキャッシュをクリアしました。")
+        st.rerun()
+
+    if connection_settings is None:
+        st.info("接続設定を確認し、「Snowflakeから読み込み」を押してください。")
+        return
+
+    st.caption(
+        "現在の読み込み設定: "
+        f"{connection_settings.database_name} / "
+        f"MART={connection_settings.mart_schema}, "
+        f"INT={connection_settings.int_schema}, "
+        f"STG={connection_settings.stg_schema}"
     )
 
     st.divider()
-    facility_details = load_facility_details(settings)
+    benchmark_period_keys = fetch_benchmark_period_keys(connection_settings)
+    planning_settings = render_planning_settings_section(benchmark_period_keys)
 
     st.divider()
-    facility_daily_target_details = load_facility_daily_target_details(settings)
+    regional_office_schedule_constraints = fetch_regional_office_schedule_constraints(
+        connection_settings
+    )
+    constraint_detail = render_constraint_section(
+        planning_settings,
+        regional_office_schedule_constraints,
+    )
 
     st.divider()
-    date_details = load_date_details(settings)
+    facility_details = load_facility_details(connection_settings, planning_settings)
+
+    st.divider()
+    facility_daily_target_details = load_facility_daily_target_details(
+        connection_settings,
+        planning_settings,
+    )
+
+    st.divider()
+    date_details = load_date_details(connection_settings, planning_settings)
 
     render_download_button(
-        settings=settings,
+        settings=planning_settings,
         constraint_detail=constraint_detail,
         date_details=date_details,
         facility_details=facility_details,
