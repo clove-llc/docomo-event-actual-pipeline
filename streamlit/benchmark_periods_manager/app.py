@@ -6,7 +6,7 @@ import streamlit as st
 
 try:
     from common.snowflake_client import fetch_current_database_name, fetch_schema_names
-    from common.connection_settings import ConnectionSettings
+    from common.connection_settings import ConnectionSettings, build_connection_settings
 except ModuleNotFoundError:
     from pathlib import Path
     import sys
@@ -15,7 +15,7 @@ except ModuleNotFoundError:
     sys.path.insert(0, str(streamlit_root))
 
     from common.snowflake_client import fetch_current_database_name, fetch_schema_names
-    from common.connection_settings import ConnectionSettings
+    from common.connection_settings import ConnectionSettings, build_connection_settings
 
 from dataclasses import asdict
 from datetime import date
@@ -187,33 +187,20 @@ def render_connection_settings_section(
 ) -> ConnectionSettings | None:
     current_settings = st.session_state.get("applied_connection_settings")
 
-    default_database_name = (
-        current_settings.database_name if current_settings else database_name
-    )
-    default_raw_schema = current_settings.raw_schema if current_settings else "RAW"
+    connection_settings = build_connection_settings(database_name, schema_names)
 
     with st.form("connection_settings_form"):
-        (
-            col_database_name,
-            col_raw_schema,
-        ) = st.columns(2)
+        selected_database_name = st.text_input(
+            "データベース名",
+            value=current_settings.database_name if current_settings else database_name,
+        )
 
-        with col_database_name:
-            selected_database_name = st.text_input(
-                "データベース名",
-                value=default_database_name,
-            )
-
-        with col_raw_schema:
-            raw_schema = st.selectbox(
-                "RAWスキーマ",
-                schema_names,
-                index=(
-                    schema_names.index(default_raw_schema)
-                    if default_raw_schema in schema_names
-                    else 0
-                ),
-            )
+        selected_connection_setting = st.selectbox(
+            "スキーマ名",
+            connection_settings,
+            index=0,
+            format_func=lambda connection_setting: connection_setting.label,
+        )
 
         submitted = st.form_submit_button(
             "Snowflakeから読み込み",
@@ -222,13 +209,7 @@ def render_connection_settings_section(
         )
 
     if submitted:
-        st.session_state["applied_connection_settings"] = ConnectionSettings(
-            database_name=selected_database_name,
-            mart_schema="",
-            int_schema="",
-            stg_schema="",
-            raw_schema=raw_schema,
-        )
+        st.session_state["applied_connection_settings"] = selected_connection_setting
 
     return st.session_state.get("applied_connection_settings")
 
@@ -428,7 +409,11 @@ def main() -> None:
         st.info("接続設定を確認し、「Snowflakeから読み込み」を押してください。")
         return
 
-    st.caption("現在の読み込み設定: " f"RAW={connection_settings.raw_schema}")
+    st.caption(
+        "現在の読み込み設定: "
+        f"DB={connection_settings.database_name} / "
+        f"RAW={connection_settings.raw_schema}, "
+    )
 
     init_table(connection_settings)
     render_flash_message()

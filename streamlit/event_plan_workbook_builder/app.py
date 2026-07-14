@@ -5,7 +5,7 @@ import streamlit as st
 
 try:
     from common.snowflake_client import fetch_current_database_name, fetch_schema_names
-    from common.connection_settings import ConnectionSettings
+    from common.connection_settings import ConnectionSettings, build_connection_settings
 except ModuleNotFoundError:
     from pathlib import Path
     import sys
@@ -14,7 +14,7 @@ except ModuleNotFoundError:
     sys.path.insert(0, str(streamlit_root))
 
     from common.snowflake_client import fetch_current_database_name, fetch_schema_names
-    from common.connection_settings import ConnectionSettings
+    from common.connection_settings import ConnectionSettings, build_connection_settings
 
 from datetime import datetime
 from dataclasses import asdict, dataclass
@@ -187,56 +187,20 @@ def render_connection_settings_section(
 ) -> ConnectionSettings | None:
     current_settings = st.session_state.get("applied_connection_settings")
 
-    default_database_name = (
-        current_settings.database_name if current_settings else database_name
-    )
-    default_mart_schema = current_settings.mart_schema if current_settings else "MART"
-    default_int_schema = current_settings.int_schema if current_settings else "INT"
-    default_stg_schema = current_settings.stg_schema if current_settings else "STG"
+    connection_settings = build_connection_settings(database_name, schema_names)
 
     with st.form("connection_settings_form"):
-        col_database_name, col_mart_schema, col_int_schema, col_stg_schema = st.columns(
-            4
+        selected_database_name = st.text_input(
+            "データベース名",
+            value=current_settings.database_name if current_settings else database_name,
         )
 
-        with col_database_name:
-            selected_database_name = st.text_input(
-                "データベース名",
-                value=default_database_name,
-            )
-
-        with col_mart_schema:
-            mart_schema = st.selectbox(
-                "MARTスキーマ",
-                schema_names,
-                index=(
-                    schema_names.index(default_mart_schema)
-                    if default_mart_schema in schema_names
-                    else 0
-                ),
-            )
-
-        with col_int_schema:
-            int_schema = st.selectbox(
-                "INTスキーマ",
-                schema_names,
-                index=(
-                    schema_names.index(default_int_schema)
-                    if default_int_schema in schema_names
-                    else 0
-                ),
-            )
-
-        with col_stg_schema:
-            stg_schema = st.selectbox(
-                "STGスキーマ",
-                schema_names,
-                index=(
-                    schema_names.index(default_stg_schema)
-                    if default_stg_schema in schema_names
-                    else 0
-                ),
-            )
+        selected_connection_setting = st.selectbox(
+            "スキーマ名",
+            connection_settings,
+            index=0,
+            format_func=lambda connection_setting: connection_setting.label,
+        )
 
         submitted = st.form_submit_button(
             "Snowflakeから読み込み",
@@ -245,13 +209,7 @@ def render_connection_settings_section(
         )
 
     if submitted:
-        st.session_state["applied_connection_settings"] = ConnectionSettings(
-            database_name=selected_database_name,
-            mart_schema=mart_schema,
-            int_schema=int_schema,
-            stg_schema=stg_schema,
-            raw_schema="",
-        )
+        st.session_state["applied_connection_settings"] = selected_connection_setting
 
     return st.session_state.get("applied_connection_settings")
 
@@ -519,10 +477,11 @@ def main() -> None:
 
     st.caption(
         "現在の読み込み設定: "
-        f"{connection_settings.database_name} / "
-        f"MART={connection_settings.mart_schema}, "
+        f"DB={connection_settings.database_name} / "
+        f"RAW={connection_settings.raw_schema}, "
+        f"STG={connection_settings.stg_schema}, "
         f"INT={connection_settings.int_schema}, "
-        f"STG={connection_settings.stg_schema}"
+        f"MART={connection_settings.mart_schema}"
     )
 
     st.divider()
