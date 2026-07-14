@@ -4,6 +4,14 @@ import datetime
 from datetime import date
 from typing import Any
 
+from pathlib import Path
+import sys
+
+STREAMLIT_ROOT = Path(__file__).resolve().parents[1]
+
+if str(STREAMLIT_ROOT) not in sys.path:
+    sys.path.insert(0, str(STREAMLIT_ROOT))
+
 from entities import (
     DateDetail,
     FacilityDailyTargetDetail,
@@ -11,11 +19,7 @@ from entities import (
     RegionalOfficeScheduleConstraint,
 )
 from common.snowflake_client import (
-    session,
-    conn,
-    table_name,
     fetch_all,
-    ConnectionSetting,
 )
 
 # ====================
@@ -46,54 +50,34 @@ def _to_date(value: Any) -> date:
 # ====================
 
 
-def fetch_benchmark_period_keys(connection_setting: ConnectionSetting) -> list[str]:
+def fetch_benchmark_period_keys() -> list[str]:
     """Snowflakeから過去実績対象期間の一覧を取得する。"""
-    target_table = table_name(
-        "RAW_BENCHMARK_PERIODS",
-        database_name=connection_setting.database_name,
-        schema_name=connection_setting.schema_name,
-        session=session,
-        conn=conn,
-    )
-
     rows = fetch_all(
         f"""
             SELECT DISTINCT
                 BENCHMARK_PERIOD_KEY
-            FROM {target_table}
+            FROM USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
             ORDER BY BENCHMARK_PERIOD_KEY DESC
             """,
         [],
-        session=session,
-        conn=conn,
     )
 
     return [str(row[0]) for row in rows]
 
 
-def fetch_regional_office_schedule_constraints(
-    connection_setting: ConnectionSetting,
-) -> list[RegionalOfficeScheduleConstraint]:
+def fetch_regional_office_schedule_constraints() -> (
+    list[RegionalOfficeScheduleConstraint]
+):
     """Snowflakeから支社別スケジュール制限マスタの情報を取得する。"""
-    target_table = table_name(
-        "STG_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER",
-        database_name=connection_setting.database_name,
-        schema_name=connection_setting.schema_name,
-        session=session,
-        conn=conn,
-    )
-
     rows = fetch_all(
         f"""
         SELECT
             REGIONAL_OFFICE,
             DAILY_EVENT_LIMIT,
             OPERATING_DAYS
-        FROM {target_table}
+        FROM USERDB_D_P01_LAK.USER_SMCB_01.STG_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER
         """,
         [],
-        session=session,
-        conn=conn,
     )
 
     return [
@@ -107,21 +91,12 @@ def fetch_regional_office_schedule_constraints(
 
 
 def fetch_facility_daily_target_details(
-    connection_setting: ConnectionSetting,
     benchmark_period_key: str,
     year: int,
     month: int,
     regional_office_name: str,
 ) -> list[FacilityDailyTargetDetail]:
     """Snowflakeから過去実績対象期間の実績をもとに算出された対象支社の目標値を取得する。"""
-    target_table = table_name(
-        "FACT_FACILITY_PERFORMANCE_SLOTS_TABLE",
-        database_name=connection_setting.database_name,
-        schema_name=connection_setting.schema_name,
-        session=session,
-        conn=conn,
-    )
-
     rows = fetch_all(
         f"""
         SELECT
@@ -134,7 +109,7 @@ def fetch_facility_daily_target_details(
             DATE_FLAG,
             CPA,
             STANDARD_TARGET_SEASONAL
-        FROM {target_table}
+        FROM USERDB_D_P01_LAK.USER_SMCB_01.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE
         WHERE BENCHMARK_PERIOD_KEY = ?
           AND EXTRACT(YEAR FROM DATE) = ?
           AND EXTRACT(MONTH FROM DATE) = ?
@@ -147,8 +122,6 @@ def fetch_facility_daily_target_details(
             month,
             regional_office_name,
         ],
-        session=session,
-        conn=conn,
     )
 
     return [
@@ -168,29 +141,12 @@ def fetch_facility_daily_target_details(
 
 
 def fetch_facility_details(
-    connection_setting: ConnectionSetting,
     benchmark_period_key: str,
     year: int,
     month: int,
     regional_office_name: str,
 ) -> list[FacilityDetail]:
     """Snowflakeから指定された支社の施設詳細情報を取得する。"""
-    target_table = table_name(
-        "FACT_FACILITY_PERFORMANCE_SLOTS_TABLE",
-        database_name=connection_setting.database_name,
-        schema_name=connection_setting.schema_name,
-        session=session,
-        conn=conn,
-    )
-
-    schedule_table = table_name(
-        "STG_FACILITY_SCHEDULE_CONSTRAINTS_MASTER",
-        database_name=connection_setting.database_name,
-        schema_name=connection_setting.schema_name,
-        session=session,
-        conn=conn,
-    )
-
     rows = fetch_all(
         f"""
         SELECT
@@ -212,8 +168,8 @@ def fetch_facility_details(
             ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = '年末' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_year_end_standard_target_seasonal,
             ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = 'ブラックフライデー' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_black_friday_standard_target_seasonal
         FROM
-            {target_table} AS F_F_P_S
-            LEFT JOIN {schedule_table} AS F_S_C_M ON F_F_P_S.FACILITY_CODE = F_S_C_M.FACILITY_CODE
+            USERDB_D_P01_LAK.USER_SMCB_01.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE AS F_F_P_S
+            LEFT JOIN USERDB_D_P01_LAK.USER_SMCB_01.STG_FACILITY_SCHEDULE_CONSTRAINTS_MASTER AS F_S_C_M ON F_F_P_S.FACILITY_CODE = F_S_C_M.FACILITY_CODE
         WHERE F_F_P_S.BENCHMARK_PERIOD_KEY = ?
             AND EXTRACT(YEAR FROM F_F_P_S.DATE) = ?
             AND EXTRACT(MONTH FROM F_F_P_S.DATE) = ?
@@ -235,8 +191,6 @@ def fetch_facility_details(
             month,
             regional_office_name,
         ],
-        session=session,
-        conn=conn,
     )
 
     return [
@@ -263,25 +217,15 @@ def fetch_facility_details(
     ]
 
 
-def fetch_date_master(
-    connection_setting: ConnectionSetting, year: int, month: int
-) -> list[DateDetail]:
+def fetch_date_master(year: int, month: int) -> list[DateDetail]:
     """Snowflakeから指定された年月の日付マスタ情報を取得する。"""
-    target_table = table_name(
-        "STG_DATE_MASTER",
-        database_name=connection_setting.database_name,
-        schema_name=connection_setting.schema_name,
-        session=session,
-        conn=conn,
-    )
-
     rows = fetch_all(
         f"""
         SELECT
             DATE,
             WEEKDAY_NAME_AND_WEEK_NUMBER_MONTHLY,
             DATE_FLAG
-        FROM {target_table}
+        FROM USERDB_D_P01_LAK.USER_SMCB_01.STG_DATE_MASTER
         WHERE YEAR = ?
           AND MONTH = ?
         ORDER BY DATE
@@ -290,8 +234,6 @@ def fetch_date_master(
             year,
             month,
         ],
-        session=session,
-        conn=conn,
     )
 
     return [

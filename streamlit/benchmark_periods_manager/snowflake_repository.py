@@ -2,17 +2,21 @@ from __future__ import annotations
 
 import datetime
 
+from pathlib import Path
+import sys
+
+STREAMLIT_ROOT = Path(__file__).resolve().parents[1]
+
+if str(STREAMLIT_ROOT) not in sys.path:
+    sys.path.insert(0, str(STREAMLIT_ROOT))
+
 from datetime import date
 from typing import Any
 from entities import BenchmarkPeriod
 from common.snowflake_client import (
-    session,
-    conn,
-    table_name,
     fetch_all,
     execute_sql,
     execute_many,
-    ConnectionSetting,
 )
 
 
@@ -31,16 +35,10 @@ def to_date(value: Any) -> date:
 # ====================
 
 
-def init_table(connection_setting: ConnectionSetting) -> None:
-    target_table = table_name(
-        "RAW_BENCHMARK_PERIODS",
-        database_name=connection_setting.database_name,
-        schema_name=connection_setting.schema_name,
-    )
-
+def init_table() -> None:
     execute_sql(
         f"""
-        CREATE TABLE IF NOT EXISTS {target_table} (
+        CREATE TABLE IF NOT EXISTS USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS (
             BENCHMARK_PERIOD_KEY STRING NOT NULL,
             BENCHMARK_PERIOD_NAME STRING NOT NULL,
             PERIOD_START_DATE DATE NOT NULL,
@@ -48,23 +46,11 @@ def init_table(connection_setting: ConnectionSetting) -> None:
             PERIOD_MONTH_COUNT INT NOT NULL
         )
         """,
-        session=session,
-        conn=conn,
     )
 
 
-def fetch_benchmark_periods(
-    connection_setting: ConnectionSetting,
-) -> list[BenchmarkPeriod]:
+def fetch_benchmark_periods() -> list[BenchmarkPeriod]:
     """Snowflakeから基準期間マスタを取得する。"""
-    target_table = table_name(
-        "RAW_BENCHMARK_PERIODS",
-        database_name=connection_setting.database_name,
-        schema_name=connection_setting.schema_name,
-        session=session,
-        conn=conn,
-    )
-
     rows = fetch_all(
         f"""
         SELECT
@@ -73,15 +59,13 @@ def fetch_benchmark_periods(
             PERIOD_START_DATE,
             PERIOD_END_DATE,
             PERIOD_MONTH_COUNT
-        FROM {target_table}
+        FROM USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
         ORDER BY
             PERIOD_START_DATE,
             PERIOD_END_DATE,
             BENCHMARK_PERIOD_KEY
         """,
         [],
-        session=session,
-        conn=conn,
     )
 
     return [
@@ -97,18 +81,11 @@ def fetch_benchmark_periods(
 
 
 def insert_benchmark_period(
-    connection_setting: ConnectionSetting,
     benchmark_period: BenchmarkPeriod,
 ) -> None:
-    target_table = table_name(
-        "RAW_BENCHMARK_PERIODS",
-        database_name=connection_setting.database_name,
-        schema_name=connection_setting.schema_name,
-    )
-
     execute_sql(
         f"""
-        INSERT INTO {target_table} (
+        INSERT INTO USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS (
             BENCHMARK_PERIOD_KEY,
             BENCHMARK_PERIOD_NAME,
             PERIOD_START_DATE,
@@ -124,22 +101,13 @@ def insert_benchmark_period(
             benchmark_period.period_end_date.isoformat(),
             benchmark_period.period_month_count,
         ],
-        session=session,
-        conn=conn,
     )
 
 
 def apply_benchmark_period_updates_and_deletes(
-    connection_setting: ConnectionSetting,
     update_rows: list[tuple[str, BenchmarkPeriod]],
     delete_keys: list[str],
 ) -> dict[str, int]:
-    target_table = table_name(
-        "RAW_BENCHMARK_PERIODS",
-        database_name=connection_setting.database_name,
-        schema_name=connection_setting.schema_name,
-    )
-
     update_params = [
         (
             period.benchmark_period_key,
@@ -155,21 +123,19 @@ def apply_benchmark_period_updates_and_deletes(
     delete_params = [(benchmark_period_key,) for benchmark_period_key in delete_keys]
 
     try:
-        execute_sql("BEGIN", session=session, conn=conn)
+        execute_sql("BEGIN")
 
         execute_many(
             f"""
-            DELETE FROM {target_table}
+            DELETE FROM USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
             WHERE BENCHMARK_PERIOD_KEY = ?
             """,
             delete_params,
-            session=session,
-            conn=conn,
         )
 
         execute_many(
             f"""
-            UPDATE {target_table}
+            UPDATE USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
             SET
                 BENCHMARK_PERIOD_KEY = ?,
                 BENCHMARK_PERIOD_NAME = ?,
@@ -179,14 +145,12 @@ def apply_benchmark_period_updates_and_deletes(
             WHERE BENCHMARK_PERIOD_KEY = ?
             """,
             update_params,
-            session=session,
-            conn=conn,
         )
 
-        execute_sql("COMMIT", session=session, conn=conn)
+        execute_sql("COMMIT")
 
     except Exception:
-        execute_sql("ROLLBACK", session=session, conn=conn)
+        execute_sql("ROLLBACK")
         raise
 
     return {

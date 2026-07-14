@@ -4,23 +4,10 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from pathlib import Path
-import sys
-
-STREAMLIT_ROOT = Path(__file__).resolve().parents[1]
-
-if str(STREAMLIT_ROOT) not in sys.path:
-    sys.path.insert(0, str(STREAMLIT_ROOT))
-
 from dataclasses import asdict
 from datetime import date
 from typing import Any
 
-from common.snowflake_client import (
-    fetch_database_names,
-    fetch_schema_names,
-    ConnectionSetting,
-)
 from snowflake_repository import (
     init_table,
     apply_benchmark_period_updates_and_deletes,
@@ -180,58 +167,7 @@ def render_flash_message() -> None:
         st.success(message)
 
 
-def render_connection_setting_section(
-    database_names: list[str],
-) -> ConnectionSetting | None:
-    current_setting = st.session_state.get(APPLIED_CONNECTION_SETTING_KEY)
-
-    selected_database_name = st.selectbox(
-        "データベース名",
-        database_names,
-        index=(
-            database_names.index(current_setting.database_name)
-            if current_setting and current_setting.database_name in database_names
-            else 0
-        ),
-    )
-
-    schema_names = fetch_schema_names(selected_database_name)
-
-    with st.form("connection_setting_form"):
-        selected_schema_name = st.selectbox(
-            "スキーマ名",
-            schema_names,
-            index=(
-                schema_names.index(current_setting.schema_name)
-                if current_setting
-                and current_setting.database_name == selected_database_name
-                and current_setting.schema_name in schema_names
-                else 0
-            ),
-        )
-
-        submitted = st.form_submit_button(
-            "Snowflakeから読み込み",
-            type="primary",
-            use_container_width=True,
-        )
-
-    if not submitted:
-        return current_setting
-
-    connection_setting = ConnectionSetting(
-        database_name=selected_database_name,
-        schema_name=selected_schema_name,
-    )
-
-    st.session_state[APPLIED_CONNECTION_SETTING_KEY] = connection_setting
-
-    return connection_setting
-
-
-def render_add_section(
-    connection_setting: ConnectionSetting, existing_periods: list[BenchmarkPeriod]
-) -> None:
+def render_add_section(existing_periods: list[BenchmarkPeriod]) -> None:
     st.subheader("追加")
 
     with st.form("add_benchmark_period_form"):
@@ -285,7 +221,7 @@ def render_add_section(
 
     with st.spinner("Snowflakeへ追加中です..."):
         try:
-            insert_benchmark_period(connection_setting, benchmark_period)
+            insert_benchmark_period(benchmark_period)
         except Exception as exc:  # noqa: BLE001
             st.error("Snowflakeへの追加に失敗しました。")
             st.exception(exc)
@@ -298,9 +234,7 @@ def render_add_section(
     st.rerun()
 
 
-def render_update_delete_section(
-    connection_setting: ConnectionSetting, benchmark_periods: list[BenchmarkPeriod]
-) -> None:
+def render_update_delete_section(benchmark_periods: list[BenchmarkPeriod]) -> None:
     st.subheader("更新・削除")
 
     if not benchmark_periods:
@@ -388,7 +322,6 @@ def render_update_delete_section(
     try:
         with st.spinner("Snowflakeへ保存中です..."):
             result = apply_benchmark_period_updates_and_deletes(
-                connection_setting,
                 update_rows,
                 delete_keys,
             )
@@ -411,33 +344,18 @@ def main() -> None:
 
     st.divider()
 
-    database_names = fetch_database_names()
-    connection_setting = render_connection_setting_section(
-        database_names,
-    )
-
-    if connection_setting is None:
-        st.info("接続設定を確認し、「Snowflakeから読み込み」を押してください。")
-        return
-
-    st.caption(
-        "現在の読み込み設定:"
-        f"データベース名={connection_setting.database_name} \\ "
-        f"スキーマ名={connection_setting.schema_name}"
-    )
-
-    init_table(connection_setting)
+    init_table()
     render_flash_message()
 
-    benchmark_periods = fetch_benchmark_periods(connection_setting)
+    benchmark_periods = fetch_benchmark_periods()
 
     col_add, col_update_delete = st.columns([1, 3])
 
     with col_add:
-        render_add_section(connection_setting, benchmark_periods)
+        render_add_section(benchmark_periods)
 
     with col_update_delete:
-        render_update_delete_section(connection_setting, benchmark_periods)
+        render_update_delete_section(benchmark_periods)
 
 
 if __name__ == "__main__":
