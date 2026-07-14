@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import datetime
-import streamlit as st
 
 from datetime import date
 from typing import Any
-from config import SNOWFLAKE_CACHE_TTL_SECONDS
 from entities import BenchmarkPeriod
 from common.connection_settings import ConnectionSettings
 from common.snowflake_client import (
@@ -33,11 +31,6 @@ def to_date(value: Any) -> date:
 # ====================
 
 
-def clear_snowflake_cache() -> None:
-    """Snowflake取得系のキャッシュをクリアする。"""
-    fetch_benchmark_periods.clear()
-
-
 def init_table(connection_settings: ConnectionSettings) -> None:
     target_table = table_name(
         "RAW_BENCHMARK_PERIODS",
@@ -60,7 +53,6 @@ def init_table(connection_settings: ConnectionSettings) -> None:
     )
 
 
-@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_benchmark_periods(
     connection_settings: ConnectionSettings,
 ) -> list[BenchmarkPeriod]:

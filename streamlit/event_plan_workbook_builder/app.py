@@ -27,7 +27,6 @@ from config import (
     REGIONAL_OFFICE_NAMES,
 )
 from snowflake_repository import (
-    clear_snowflake_cache,
     fetch_benchmark_period_keys,
     fetch_date_master,
     fetch_facility_daily_target_details,
@@ -465,11 +464,6 @@ def main() -> None:
         database_name,
         schema_names,
     )
-
-    if st.button("Snowflakeキャッシュをクリア", type="secondary"):
-        clear_snowflake_cache()
-        st.success("Snowflakeキャッシュをクリアしました。")
-        st.rerun()
 
     if connection_settings is None:
         st.info("接続設定を確認し、「Snowflakeから読み込み」を押してください。")

@@ -1,11 +1,9 @@
 from __future__ import annotations
-import streamlit as st
 import datetime
 
 from datetime import date
 from typing import Any
 
-from config import SNOWFLAKE_CACHE_TTL_SECONDS
 from entities import (
     DateDetail,
     FacilityDailyTargetDetail,
@@ -48,16 +46,6 @@ def _to_date(value: Any) -> date:
 # ====================
 
 
-def clear_snowflake_cache() -> None:
-    """Snowflake取得系のキャッシュをクリアする。"""
-    fetch_benchmark_period_keys.clear()
-    fetch_regional_office_schedule_constraints.clear()
-    fetch_facility_daily_target_details.clear()
-    fetch_facility_details.clear()
-    fetch_date_master.clear()
-
-
-@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_benchmark_period_keys(connection_settings: ConnectionSettings) -> list[str]:
     """Snowflakeから過去実績対象期間の一覧を取得する。"""
     target_table = table_name(
@@ -83,7 +71,6 @@ def fetch_benchmark_period_keys(connection_settings: ConnectionSettings) -> list
     return [str(row[0]) for row in rows]
 
 
-@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_regional_office_schedule_constraints(
     connection_settings: ConnectionSettings,
 ) -> list[RegionalOfficeScheduleConstraint]:
@@ -119,7 +106,6 @@ def fetch_regional_office_schedule_constraints(
     ]
 
 
-@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_facility_daily_target_details(
     connection_settings: ConnectionSettings,
     benchmark_period_key: str,
@@ -181,7 +167,6 @@ def fetch_facility_daily_target_details(
     ]
 
 
-@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_facility_details(
     connection_settings: ConnectionSettings,
     benchmark_period_key: str,
@@ -278,7 +263,6 @@ def fetch_facility_details(
     ]
 
 
-@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_date_master(
     connection_settings: ConnectionSettings, year: int, month: int
 ) -> list[DateDetail]:

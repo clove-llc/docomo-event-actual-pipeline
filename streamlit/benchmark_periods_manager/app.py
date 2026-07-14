@@ -26,7 +26,6 @@ from entities import BenchmarkPeriod
 from snowflake_repository import (
     init_table,
     apply_benchmark_period_updates_and_deletes,
-    clear_snowflake_cache,
     fetch_benchmark_periods,
     insert_benchmark_period,
 )
@@ -271,7 +270,6 @@ def render_add_section(
     with st.spinner("Snowflakeへ追加中です..."):
         try:
             insert_benchmark_period(connection_settings, benchmark_period)
-            clear_snowflake_cache()
         except Exception as exc:  # noqa: BLE001
             st.error("Snowflakeへの追加に失敗しました。")
             st.exception(exc)
@@ -378,7 +376,6 @@ def render_update_delete_section(
                 update_rows,
                 delete_keys,
             )
-            clear_snowflake_cache()
 
     except Exception as exc:  # noqa: BLE001
         st.error("Snowflakeへの保存に失敗しました。")

@@ -2,7 +2,6 @@ from __future__ import annotations
 from pathlib import Path
 
 PAGE_TITLE = "Copilot用Excelシート作成"
-SNOWFLAKE_CACHE_TTL_SECONDS = 600
 
 REGIONAL_OFFICE_NAMES = [
     "関信越",
