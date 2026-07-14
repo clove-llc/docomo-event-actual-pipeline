@@ -5,7 +5,6 @@ import datetime
 from datetime import date
 from typing import Any
 from entities import BenchmarkPeriod
-from common.connection_settings import ConnectionSettings
 from common.snowflake_client import (
     session,
     conn,
@@ -13,6 +12,7 @@ from common.snowflake_client import (
     fetch_all,
     execute_sql,
     execute_many,
+    ConnectionSetting,
 )
 
 
@@ -31,11 +31,11 @@ def to_date(value: Any) -> date:
 # ====================
 
 
-def init_table(connection_settings: ConnectionSettings) -> None:
+def init_table(connection_setting: ConnectionSetting) -> None:
     target_table = table_name(
         "RAW_BENCHMARK_PERIODS",
-        database=connection_settings.database_name,
-        schema=connection_settings.raw_schema,
+        database_name=connection_setting.database_name,
+        schema_name=connection_setting.schema_name,
     )
 
     execute_sql(
@@ -54,13 +54,13 @@ def init_table(connection_settings: ConnectionSettings) -> None:
 
 
 def fetch_benchmark_periods(
-    connection_settings: ConnectionSettings,
+    connection_setting: ConnectionSetting,
 ) -> list[BenchmarkPeriod]:
     """Snowflakeから基準期間マスタを取得する。"""
     target_table = table_name(
         "RAW_BENCHMARK_PERIODS",
-        database=connection_settings.database_name,
-        schema=connection_settings.raw_schema,
+        database_name=connection_setting.database_name,
+        schema_name=connection_setting.schema_name,
         session=session,
         conn=conn,
     )
@@ -97,13 +97,13 @@ def fetch_benchmark_periods(
 
 
 def insert_benchmark_period(
-    connection_settings: ConnectionSettings,
+    connection_setting: ConnectionSetting,
     benchmark_period: BenchmarkPeriod,
 ) -> None:
     target_table = table_name(
         "RAW_BENCHMARK_PERIODS",
-        database=connection_settings.database_name,
-        schema=connection_settings.raw_schema,
+        database_name=connection_setting.database_name,
+        schema_name=connection_setting.schema_name,
     )
 
     execute_sql(
@@ -130,14 +130,14 @@ def insert_benchmark_period(
 
 
 def apply_benchmark_period_updates_and_deletes(
-    connection_settings: ConnectionSettings,
+    connection_setting: ConnectionSetting,
     update_rows: list[tuple[str, BenchmarkPeriod]],
     delete_keys: list[str],
 ) -> dict[str, int]:
     target_table = table_name(
         "RAW_BENCHMARK_PERIODS",
-        database=connection_settings.database_name,
-        schema=connection_settings.raw_schema,
+        database_name=connection_setting.database_name,
+        schema_name=connection_setting.schema_name,
     )
 
     update_params = [

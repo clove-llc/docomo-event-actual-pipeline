@@ -1,5 +1,13 @@
 import streamlit as st
 from typing import Any
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class ConnectionSetting:
+    database_name: str
+    schema_name: str
+
 
 # ====================
 # 共通接続設定
@@ -9,22 +17,6 @@ from typing import Any
 def _quote_ident(name: str) -> str:
     """Snowflake識別子をダブルクォートする。"""
     return '"' + name.replace('"', '""') + '"'
-
-
-def _current_database(*, session=None, conn=None) -> str:
-    """現在の接続コンテキストから database を取得。"""
-    rows = fetch_all(
-        "SELECT CURRENT_DATABASE()",
-        session=session,
-        conn=conn,
-    )
-
-    db = rows[0][0]
-
-    if not db:
-        raise RuntimeError("database を取得できませんでした。")
-
-    return str(db)
 
 
 def _get_session():
@@ -38,20 +30,18 @@ def _get_session():
 
 
 def table_name(
-    table: str,
+    table_name: str,
     *,
-    schema: str,
-    database: str,
+    schema_name: str,
+    database_name: str,
     session=None,
     conn=None,
 ) -> str:
-    db = database or _current_database(session=session, conn=conn)
-
     return ".".join(
         [
-            _quote_ident(db),
-            _quote_ident(schema),
-            _quote_ident(table),
+            _quote_ident(database_name),
+            _quote_ident(schema_name),
+            _quote_ident(table_name),
         ]
     )
 
@@ -91,20 +81,40 @@ def fetch_all(
         cur.close()
 
 
-def fetch_current_database_name() -> str:
-    return _current_database(session=session, conn=conn)
-
-
-def fetch_schema_names() -> list[str]:
-    db = _current_database(session=session, conn=conn)
+def fetch_database_names() -> list[str]:
+    execute_sql(
+        f"SHOW DATABASES",
+        session=session,
+        conn=conn,
+    )
 
     rows = fetch_all(
-        f"""
-        SELECT
-            SCHEMA_NAME
-        FROM {_quote_ident(db)}.INFORMATION_SCHEMA.SCHEMATA
-        WHERE SCHEMA_NAME <> 'INFORMATION_SCHEMA'
-        ORDER BY SCHEMA_NAME
+        """
+        SELECT "name"
+        FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+        ORDER BY LOWER("name")
+        """,
+        session=session,
+        conn=conn,
+    )
+
+    return [str(row[0]) for row in rows]
+
+
+def fetch_schema_names(database_name: str) -> list[str]:
+    quoted_database_name = _quote_ident(database_name)
+
+    execute_sql(
+        f"SHOW SCHEMAS IN DATABASE {quoted_database_name}",
+        session=session,
+        conn=conn,
+    )
+
+    rows = fetch_all(
+        """
+        SELECT "name"
+        FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+        ORDER BY LOWER("name")
         """,
         session=session,
         conn=conn,

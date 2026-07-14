@@ -10,12 +10,12 @@ from entities import (
     FacilityDetail,
     RegionalOfficeScheduleConstraint,
 )
-from common.connection_settings import ConnectionSettings
 from common.snowflake_client import (
     session,
     conn,
     table_name,
     fetch_all,
+    ConnectionSetting,
 )
 
 # ====================
@@ -46,12 +46,12 @@ def _to_date(value: Any) -> date:
 # ====================
 
 
-def fetch_benchmark_period_keys(connection_settings: ConnectionSettings) -> list[str]:
+def fetch_benchmark_period_keys(connection_setting: ConnectionSetting) -> list[str]:
     """Snowflakeから過去実績対象期間の一覧を取得する。"""
     target_table = table_name(
-        "INT_BENCHMARK_PERIODS",
-        database=connection_settings.database_name,
-        schema=connection_settings.int_schema,
+        "RAW_BENCHMARK_PERIODS",
+        database_name=connection_setting.database_name,
+        schema_name=connection_setting.schema_name,
         session=session,
         conn=conn,
     )
@@ -72,13 +72,13 @@ def fetch_benchmark_period_keys(connection_settings: ConnectionSettings) -> list
 
 
 def fetch_regional_office_schedule_constraints(
-    connection_settings: ConnectionSettings,
+    connection_setting: ConnectionSetting,
 ) -> list[RegionalOfficeScheduleConstraint]:
     """Snowflakeから支社別スケジュール制限マスタの情報を取得する。"""
     target_table = table_name(
         "STG_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER",
-        database=connection_settings.database_name,
-        schema=connection_settings.stg_schema,
+        database_name=connection_setting.database_name,
+        schema_name=connection_setting.schema_name,
         session=session,
         conn=conn,
     )
@@ -107,7 +107,7 @@ def fetch_regional_office_schedule_constraints(
 
 
 def fetch_facility_daily_target_details(
-    connection_settings: ConnectionSettings,
+    connection_setting: ConnectionSetting,
     benchmark_period_key: str,
     year: int,
     month: int,
@@ -116,8 +116,8 @@ def fetch_facility_daily_target_details(
     """Snowflakeから過去実績対象期間の実績をもとに算出された対象支社の目標値を取得する。"""
     target_table = table_name(
         "FACT_FACILITY_PERFORMANCE_SLOTS_TABLE",
-        database=connection_settings.database_name,
-        schema=connection_settings.mart_schema,
+        database_name=connection_setting.database_name,
+        schema_name=connection_setting.schema_name,
         session=session,
         conn=conn,
     )
@@ -168,7 +168,7 @@ def fetch_facility_daily_target_details(
 
 
 def fetch_facility_details(
-    connection_settings: ConnectionSettings,
+    connection_setting: ConnectionSetting,
     benchmark_period_key: str,
     year: int,
     month: int,
@@ -177,16 +177,16 @@ def fetch_facility_details(
     """Snowflakeから指定された支社の施設詳細情報を取得する。"""
     target_table = table_name(
         "FACT_FACILITY_PERFORMANCE_SLOTS_TABLE",
-        database=connection_settings.database_name,
-        schema=connection_settings.mart_schema,
+        database_name=connection_setting.database_name,
+        schema_name=connection_setting.schema_name,
         session=session,
         conn=conn,
     )
 
     schedule_table = table_name(
         "STG_FACILITY_SCHEDULE_CONSTRAINTS_MASTER",
-        database=connection_settings.database_name,
-        schema=connection_settings.stg_schema,
+        database_name=connection_setting.database_name,
+        schema_name=connection_setting.schema_name,
         session=session,
         conn=conn,
     )
@@ -264,13 +264,13 @@ def fetch_facility_details(
 
 
 def fetch_date_master(
-    connection_settings: ConnectionSettings, year: int, month: int
+    connection_setting: ConnectionSetting, year: int, month: int
 ) -> list[DateDetail]:
     """Snowflakeから指定された年月の日付マスタ情報を取得する。"""
     target_table = table_name(
         "STG_DATE_MASTER",
-        database=connection_settings.database_name,
-        schema=connection_settings.stg_schema,
+        database_name=connection_setting.database_name,
+        schema_name=connection_setting.schema_name,
         session=session,
         conn=conn,
     )

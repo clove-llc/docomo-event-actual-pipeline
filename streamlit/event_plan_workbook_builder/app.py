@@ -3,18 +3,13 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-try:
-    from common.snowflake_client import fetch_current_database_name, fetch_schema_names
-    from common.connection_settings import ConnectionSettings, build_connection_settings
-except ModuleNotFoundError:
-    from pathlib import Path
-    import sys
+from pathlib import Path
+import sys
 
-    streamlit_root = Path(__file__).resolve().parents[1]
-    sys.path.insert(0, str(streamlit_root))
+STREAMLIT_ROOT = Path(__file__).resolve().parents[1]
 
-    from common.snowflake_client import fetch_current_database_name, fetch_schema_names
-    from common.connection_settings import ConnectionSettings, build_connection_settings
+if str(STREAMLIT_ROOT) not in sys.path:
+    sys.path.insert(0, str(STREAMLIT_ROOT))
 
 from datetime import datetime
 from dataclasses import asdict, dataclass
@@ -25,6 +20,11 @@ from config import (
     EXCEL_MIME_TYPE,
     PAGE_TITLE,
     REGIONAL_OFFICE_NAMES,
+)
+from common.snowflake_client import (
+    fetch_database_names,
+    fetch_schema_names,
+    ConnectionSetting,
 )
 from snowflake_repository import (
     fetch_benchmark_period_keys,
@@ -47,6 +47,8 @@ from builders.output_workbook_builder import (
     OutputWorkbookBuilder,
 )
 from utils import calculate_cpa, calculate_input_data_cpa, format_period, parse_int
+
+APPLIED_CONNECTION_SETTING_KEY = "applied_connection_setting"
 
 
 @dataclass(frozen=True)
@@ -93,14 +95,14 @@ def validate_constraint_inputs(
 
 
 def load_facility_daily_target_details(
-    connection_settings: ConnectionSettings,
+    connection_setting: ConnectionSetting,
     settings: PlanningSettings,
 ) -> list[FacilityDailyTargetDetail]:
     st.subheader("施設別・日別目標値")
 
     try:
         facility_daily_target_details = fetch_facility_daily_target_details(
-            connection_settings,
+            connection_setting,
             settings.benchmark_period_key,
             settings.year,
             settings.month,
@@ -124,14 +126,14 @@ def load_facility_daily_target_details(
 
 
 def load_facility_details(
-    connection_settings: ConnectionSettings,
+    connection_setting: ConnectionSetting,
     settings: PlanningSettings,
 ) -> list[FacilityDetail]:
     st.subheader("対象支社の施設情報")
 
     try:
         facility_details = fetch_facility_details(
-            connection_settings,
+            connection_setting,
             settings.benchmark_period_key,
             settings.year,
             settings.month,
@@ -155,13 +157,13 @@ def load_facility_details(
 
 
 def load_date_details(
-    connection_settings: ConnectionSettings, settings: PlanningSettings
+    connection_setting: ConnectionSetting, settings: PlanningSettings
 ) -> list[DateDetail]:
     st.subheader("日付情報")
 
     try:
         date_details = fetch_date_master(
-            connection_settings, year=settings.year, month=settings.month
+            connection_setting, year=settings.year, month=settings.month
         )
     except Exception as exc:  # noqa: BLE001
         st.error("Snowflakeから日付情報を取得できませんでした。")
@@ -180,25 +182,34 @@ def load_date_details(
     return date_details
 
 
-def render_connection_settings_section(
-    database_name: str,
-    schema_names: list[str],
-) -> ConnectionSettings | None:
-    current_settings = st.session_state.get("applied_connection_settings")
+def render_connection_setting_section(
+    database_names: list[str],
+) -> ConnectionSetting | None:
+    current_setting = st.session_state.get(APPLIED_CONNECTION_SETTING_KEY)
 
-    connection_settings = build_connection_settings(database_name, schema_names)
+    selected_database_name = st.selectbox(
+        "データベース名",
+        database_names,
+        index=(
+            database_names.index(current_setting.database_name)
+            if current_setting and current_setting.database_name in database_names
+            else 0
+        ),
+    )
 
-    with st.form("connection_settings_form"):
-        selected_database_name = st.text_input(
-            "データベース名",
-            value=current_settings.database_name if current_settings else database_name,
-        )
+    schema_names = fetch_schema_names(selected_database_name)
 
-        selected_connection_setting = st.selectbox(
+    with st.form("connection_setting_form"):
+        selected_schema_name = st.selectbox(
             "スキーマ名",
-            connection_settings,
-            index=0,
-            format_func=lambda connection_setting: connection_setting.label,
+            schema_names,
+            index=(
+                schema_names.index(current_setting.schema_name)
+                if current_setting
+                and current_setting.database_name == selected_database_name
+                and current_setting.schema_name in schema_names
+                else 0
+            ),
         )
 
         submitted = st.form_submit_button(
@@ -207,10 +218,17 @@ def render_connection_settings_section(
             use_container_width=True,
         )
 
-    if submitted:
-        st.session_state["applied_connection_settings"] = selected_connection_setting
+    if not submitted:
+        return current_setting
 
-    return st.session_state.get("applied_connection_settings")
+    connection_setting = ConnectionSetting(
+        database_name=selected_database_name,
+        schema_name=selected_schema_name,
+    )
+
+    st.session_state[APPLIED_CONNECTION_SETTING_KEY] = connection_setting
+
+    return connection_setting
 
 
 def render_planning_settings_section(
@@ -457,34 +475,29 @@ def main() -> None:
     st.title(PAGE_TITLE)
 
     st.divider()
-    database_name = fetch_current_database_name()
-    schema_names = fetch_schema_names()
 
-    connection_settings = render_connection_settings_section(
-        database_name,
-        schema_names,
+    database_names = fetch_database_names()
+    connection_setting = render_connection_setting_section(
+        database_names,
     )
 
-    if connection_settings is None:
+    if connection_setting is None:
         st.info("接続設定を確認し、「Snowflakeから読み込み」を押してください。")
         return
 
     st.caption(
-        "現在の読み込み設定: "
-        f"DB={connection_settings.database_name} / "
-        f"RAW={connection_settings.raw_schema}, "
-        f"STG={connection_settings.stg_schema}, "
-        f"INT={connection_settings.int_schema}, "
-        f"MART={connection_settings.mart_schema}"
+        "現在の読み込み設定: \n"
+        f"データベース名={connection_setting.database_name} \\ "
+        f"スキーマ名={connection_setting.schema_name}"
     )
 
     st.divider()
-    benchmark_period_keys = fetch_benchmark_period_keys(connection_settings)
+    benchmark_period_keys = fetch_benchmark_period_keys(connection_setting)
     planning_settings = render_planning_settings_section(benchmark_period_keys)
 
     st.divider()
     regional_office_schedule_constraints = fetch_regional_office_schedule_constraints(
-        connection_settings
+        connection_setting
     )
     constraint_detail = render_constraint_section(
         planning_settings,
@@ -492,16 +505,16 @@ def main() -> None:
     )
 
     st.divider()
-    facility_details = load_facility_details(connection_settings, planning_settings)
+    facility_details = load_facility_details(connection_setting, planning_settings)
 
     st.divider()
     facility_daily_target_details = load_facility_daily_target_details(
-        connection_settings,
+        connection_setting,
         planning_settings,
     )
 
     st.divider()
-    date_details = load_date_details(connection_settings, planning_settings)
+    date_details = load_date_details(connection_setting, planning_settings)
 
     render_download_button(
         settings=planning_settings,
