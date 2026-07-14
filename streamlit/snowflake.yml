@@ -9,7 +9,7 @@ entities:
     main_file: event_plan_workbook_builder/app.py
     artifacts:
       # アプリ本体
-      - src: event_plan_workbook_builder/[!_]*.py
+      - src: event_plan_workbook_builder/*.py
         dest: ./
       - src: event_plan_workbook_builder/environment.yml
         dest: ./
@@ -32,7 +32,7 @@ entities:
     main_file: benchmark_periods_manager/app.py
     artifacts:
       # アプリ本体
-      - src: benchmark_periods_manager/[!_]*.py
+      - src: benchmark_periods_manager/*.py
         dest: ./
       - src: benchmark_periods_manager/environment.yml
         dest: ./
@@ -48,11 +48,11 @@ entities:
     query_warehouse: STREAMLIT_WH
     main_file: uploader/app.py
     artifacts:
-      - src: uploader/[!_]*.py
+      - src: uploader/*.py
         dest: ./
       - src: uploader/environment.yml
         dest: ./
-      - src: uploader/loaders/[!_]*.py
+      - src: uploader/loaders/*.py
         dest: loaders/
       - src: uploader/sql/*.sql
         dest: sql/
