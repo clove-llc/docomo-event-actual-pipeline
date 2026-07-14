@@ -1,5 +1,5 @@
 
-  create or replace   view HARATO.INT.int_facility_daily_actual
+  create or replace   view USERDB_D_P01_LAK.USER_SMCB_01.int_facility_daily_actual
   
   
   
@@ -20,10 +20,10 @@
     d_m.date_type,
     d_m.date_flag,
     f_a.actual_value as actual
-from HARATO.STG.stg_facility_master as f_m
-inner join HARATO.INT.int_facility_actuals as f_a
+from USERDB_D_P01_LAK.USER_SMCB_01.stg_facility_master as f_m
+inner join USERDB_D_P01_LAK.USER_SMCB_01.int_facility_actuals as f_a
     on f_m.facility_name = f_a.facility_name
-left join HARATO.STG.stg_date_master as d_m
+left join USERDB_D_P01_LAK.USER_SMCB_01.stg_date_master as d_m
     on f_a.event_date = d_m.date
   );
 

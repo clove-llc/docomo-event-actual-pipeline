@@ -1,5 +1,5 @@
 
-  create or replace   view HARATO.STG.stg_regional_office_schedule_constraints_master
+  create or replace   view USERDB_D_P01_LAK.USER_SMCB_01.stg_regional_office_schedule_constraints_master
   
   
   
@@ -9,6 +9,6 @@
     regional_office,
     daily_event_limit,
     operating_days
-from HARATO.RAW.RAW_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER
+from USERDB_D_P01_LAK.USER_SMCB_01.RAW_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER
   );
 

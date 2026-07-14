@@ -1,7 +1,7 @@
-create or replace view HARATO.INT.int_facility_event_planning_snapshot as (
+create or replace view USERDB_D_P01_LAK.USER_SMCB_01.int_facility_event_planning_snapshot as (
 with date_flags as (
     select s_d_m.date_flag
-    from HARATO.STG.stg_date_master as s_d_m
+    from USERDB_D_P01_LAK.USER_SMCB_01.stg_date_master as s_d_m
     group by s_d_m.date_flag
 ),
 
@@ -18,10 +18,10 @@ all_pattern as (
         s_f_m.branch_office,
         d_f.date_flag,
         i_f_e_d_m.decile_rank
-    from HARATO.STG.stg_facility_master as s_f_m
-    cross join HARATO.RAW.RAW_BENCHMARK_PERIODS as i_b_p
+    from USERDB_D_P01_LAK.USER_SMCB_01.stg_facility_master as s_f_m
+    cross join USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS as i_b_p
     cross join date_flags as d_f
-    left join HARATO.INT.int_facility_event_decile_mapping as i_f_e_d_m
+    left join USERDB_D_P01_LAK.USER_SMCB_01.int_facility_event_decile_mapping as i_f_e_d_m
         on s_f_m.facility_code = i_f_e_d_m.facility_code
        and d_f.date_flag = i_f_e_d_m.date_flag
 ),
@@ -63,11 +63,11 @@ base as (
             1  -- 0の場合は1にする（下限値を1に設定）
         ) as standard_target
     from all_pattern
-    left join HARATO.INT.int_event_decile_benchmark as i_e_d_b
+    left join USERDB_D_P01_LAK.USER_SMCB_01.int_event_decile_benchmark as i_e_d_b
         on all_pattern.benchmark_period_key = i_e_d_b.benchmark_period_key
        and all_pattern.date_flag = i_e_d_b.date_flag
        and all_pattern.decile_rank = i_e_d_b.decile_rank
-    left join HARATO.INT.int_facility_event_decile_avg_actual as i_f_e_d_a_a
+    left join USERDB_D_P01_LAK.USER_SMCB_01.int_facility_event_decile_avg_actual as i_f_e_d_a_a
         on all_pattern.benchmark_period_key = i_f_e_d_a_a.benchmark_period_key
        and all_pattern.facility_code = i_f_e_d_a_a.facility_code
        and all_pattern.date_flag = i_f_e_d_a_a.date_flag

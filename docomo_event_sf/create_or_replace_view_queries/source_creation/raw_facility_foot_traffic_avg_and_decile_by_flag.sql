@@ -1,10 +1,10 @@
-create or replace view HARATO.RAW.raw_facility_foot_traffic_avg_and_decile_by_flag as
+create or replace view USERDB_D_P01_LAK.USER_SMCB_01.raw_facility_foot_traffic_avg_and_decile_by_flag as
 (
 with
 -- s1: 01_日別施設別（SENSE）を縦持ち化（施設×日 の SENSE 日次値）
 sense_src as (
     select t.*, object_construct(*) as obj
-    from HARATO.RAW.RAW_FACILITY_FOOT_TRAFFIC_DAILY t
+    from USERDB_D_P01_LAK.USER_SMCB_01.RAW_FACILITY_FOOT_TRAFFIC_DAILY t
 ),
 sense_daily as (
     select
@@ -33,7 +33,7 @@ daily_foot_traffic as (
         r.event_date,
         k."foot_traffic_total" * r.daily_ratio as foot_traffic
     from sense_daily_ratio r
-    join HARATO.RAW.RAW_KDDI_FOOT_TRAFFIC k
+    join USERDB_D_P01_LAK.USER_SMCB_01.RAW_KDDI_FOOT_TRAFFIC k
         on r.facility_code = k."facility_code"
 ),
 -- s4: 04_日別数値（日付フラグ付与）。フラグ源は RAW_DATE_FLAG（2024–2027 全カバー）
@@ -45,7 +45,7 @@ daily_flagged as (
         f.foot_traffic,
         df."date_flag" as date_flag
     from daily_foot_traffic f
-    left join HARATO.RAW.RAW_DATE_FLAG df
+    left join USERDB_D_P01_LAK.USER_SMCB_01.RAW_DATE_FLAG df
         on f.event_date = df."date"
 ),
 -- s5: 施設&日付フラグ別_人流（平均）。Excel: SUMIFS / COUNTIFS

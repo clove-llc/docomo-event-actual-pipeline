@@ -1,5 +1,5 @@
 
-create or replace view HARATO.MART.fact_facility_performance_slots_view as (
+create or replace view USERDB_D_P01_LAK.USER_SMCB_01.fact_facility_performance_slots_view as (
 with planning_snapshot_all_period as (
     select
         facility_code,
@@ -13,7 +13,7 @@ with planning_snapshot_all_period as (
         max_performance as all_period_max_performance,
         standard_target as all_period_standard_target,
         challenge_target as all_period_challenge_target,
-    from HARATO.INT.int_facility_event_planning_snapshot
+    from USERDB_D_P01_LAK.USER_SMCB_01.int_facility_event_planning_snapshot
     where benchmark_period_key = '2025_04_2026_03'
 ),
 
@@ -32,9 +32,9 @@ base as (
         s_d_m.month,
         s_d_m.week_number_monthly,
         s_d_m.date_flag
-    from HARATO.STG.stg_facility_master as s_f_m
-    cross join HARATO.STG.stg_date_master as s_d_m
-    cross join HARATO.RAW.RAW_BENCHMARK_PERIODS as p
+    from USERDB_D_P01_LAK.USER_SMCB_01.stg_facility_master as s_f_m
+    cross join USERDB_D_P01_LAK.USER_SMCB_01.stg_date_master as s_d_m
+    cross join USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS as p
 ),
 
 calc as (
@@ -99,7 +99,7 @@ calc as (
             i_f_m_d_g_z.avg_z_score
         ) as zsc
     from base as b
-    left join HARATO.INT.int_facility_event_planning_snapshot as f_e_p_s
+    left join USERDB_D_P01_LAK.USER_SMCB_01.int_facility_event_planning_snapshot as f_e_p_s
         on b.benchmark_period_key = f_e_p_s.benchmark_period_key
        and b.facility_code = f_e_p_s.facility_code
        and b.date_flag = f_e_p_s.date_flag
@@ -107,27 +107,27 @@ calc as (
         on b.facility_code = f_e_p_s_all_period.facility_code
        and b.date_flag = f_e_p_s_all_period.date_flag
     -- 施設 × 月番号 × 週番号 × 日付フラグ
-    left join HARATO.INT.int_facility_monthly_weekday_dateflag_deviation_zscore as i_f_m_w_d_z
+    left join USERDB_D_P01_LAK.USER_SMCB_01.int_facility_monthly_weekday_dateflag_deviation_zscore as i_f_m_w_d_z
         on b.facility_code = i_f_m_w_d_z.facility_code
        and b.month = i_f_m_w_d_z.month
        and b.week_number_monthly = i_f_m_w_d_z.week_number_monthly
        and b.date_flag = i_f_m_w_d_z.date_flag
     -- 施設 × 月番号 × 日付フラグ
-    left join HARATO.INT.int_facility_monthly_dateflag_deviation_zscore as i_f_m_d_z
+    left join USERDB_D_P01_LAK.USER_SMCB_01.int_facility_monthly_dateflag_deviation_zscore as i_f_m_d_z
         on b.facility_code = i_f_m_d_z.facility_code
        and b.month = i_f_m_d_z.month
        and b.date_flag = i_f_m_d_z.date_flag
     -- 施設 × 月 × 三連休
-    left join HARATO.INT.int_facility_monthly_dateflag_deviation_zscore as i_f_m_3h
+    left join USERDB_D_P01_LAK.USER_SMCB_01.int_facility_monthly_dateflag_deviation_zscore as i_f_m_3h
         on b.facility_code = i_f_m_3h.facility_code
        and b.month = i_f_m_3h.month
        and i_f_m_3h.date_flag = '三連休'
     -- 施設 × 月 × 通常土日
-    left join HARATO.INT.int_facility_monthly_dateflag_deviation_zscore as i_f_m_d_g_z
+    left join USERDB_D_P01_LAK.USER_SMCB_01.int_facility_monthly_dateflag_deviation_zscore as i_f_m_d_g_z
         on b.facility_code = i_f_m_d_g_z.facility_code
        and b.month = i_f_m_d_g_z.month
        and i_f_m_d_g_z.date_flag = '通常土日'
-    left join HARATO.INT.int_facility_target_cpa_by_facility AS i_f_t
+    left join USERDB_D_P01_LAK.USER_SMCB_01.int_facility_target_cpa_by_facility AS i_f_t
         on b.facility_name = i_f_t.facility_name
 )
 

@@ -1,5 +1,5 @@
 
-  create or replace   view HARATO.INT.int_event_decile_benchmark
+  create or replace   view USERDB_D_P01_LAK.USER_SMCB_01.int_event_decile_benchmark
   
   
   
@@ -23,7 +23,7 @@ select
     round(round(percentile_cont(0.75) within group (order by avg_actual), 2)) as p75,
     round(round(percentile_cont(0.90) within group (order by avg_actual), 2)) as p90,
     max(avg_actual) as max_performance
-from HARATO.INT.int_facility_event_decile_avg_actual
+from USERDB_D_P01_LAK.USER_SMCB_01.int_facility_event_decile_avg_actual
 group by
     benchmark_period_key,
     benchmark_period_name,

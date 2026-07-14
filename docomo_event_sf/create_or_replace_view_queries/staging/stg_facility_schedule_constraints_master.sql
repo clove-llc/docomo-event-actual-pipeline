@@ -1,5 +1,5 @@
 
-  create or replace   view HARATO.STG.stg_facility_schedule_constraints_master
+  create or replace   view USERDB_D_P01_LAK.USER_SMCB_01.stg_facility_schedule_constraints_master
   
   
   
@@ -10,6 +10,6 @@
     trim(facility_name) as facility_name,
     monthly_event_limit,
     operating_days
-from HARATO.RAW.RAW_FACILITY_SCHEDULE_CONSTRAINTS_MASTER
+from USERDB_D_P01_LAK.USER_SMCB_01.RAW_FACILITY_SCHEDULE_CONSTRAINTS_MASTER
   );
 

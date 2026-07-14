@@ -1,5 +1,5 @@
 
-  create or replace   view HARATO.STG.stg_facility_master
+  create or replace   view USERDB_D_P01_LAK.USER_SMCB_01.stg_facility_master
   
   
   
@@ -45,6 +45,6 @@
     "facility_category_2" as "FACILITY_CATEGORY_2",
     "business_floor_area" as "BUSINESS_FLOOR_AREA",
     "tenant_count" as "TENANT_COUNT"
-from HARATO.RAW.RAW_FACILITY_MASTER
+from USERDB_D_P01_LAK.USER_SMCB_01.RAW_FACILITY_MASTER
   );
 
