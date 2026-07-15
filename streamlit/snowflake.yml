@@ -14,10 +14,6 @@ entities:
       - src: event_plan_workbook_builder/environment.yml
         dest: ./
 
-      # 共通モジュール
-      - src: common/*.py
-        dest: common/
-
       # アプリ固有フォルダ
       - src: event_plan_workbook_builder/builders/*.py
         dest: builders/
@@ -36,10 +32,6 @@ entities:
         dest: ./
       - src: benchmark_periods_manager/environment.yml
         dest: ./
-
-      # 共通モジュール
-      - src: common/*.py
-        dest: common/
 
   uploader_xlsx:
     type: streamlit

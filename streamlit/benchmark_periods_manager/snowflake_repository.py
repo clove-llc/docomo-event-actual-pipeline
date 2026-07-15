@@ -2,18 +2,10 @@ from __future__ import annotations
 
 import datetime
 
-from pathlib import Path
-import sys
-
-STREAMLIT_ROOT = Path(__file__).resolve().parents[1]
-
-if str(STREAMLIT_ROOT) not in sys.path:
-    sys.path.insert(0, str(STREAMLIT_ROOT))
-
 from datetime import date
 from typing import Any
 from entities import BenchmarkPeriod
-from common.snowflake_client import (
+from snowflake_client import (
     fetch_all,
     execute_sql,
     execute_many,
