@@ -25,11 +25,6 @@ CREATE_RAW_FACILITY_ACTUALS_SQL_FILE = Path(__file__).parent.parent / "sql" / "c
 
 def create_raw_facility_actuals(ctx: LoadContext, conn=None) -> int:
     sql = CREATE_RAW_FACILITY_ACTUALS_SQL_FILE.read_text(encoding="utf-8")
-    for placeholder, value in {
-        "__RAW_DATABASE_LITERAL__": ctx.db,
-        "__RAW_SCHEMA_LITERAL__": ctx.schema,
-    }.items():
-        sql = sql.replace(placeholder, value)
 
     exec_sql(
         sql,
