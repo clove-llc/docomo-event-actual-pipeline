@@ -3,8 +3,9 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from dataclasses import asdict, dataclass
 from datetime import datetime
+from dataclasses import asdict, dataclass
+from openpyxl import load_workbook
 from config import (
     COPILOT_INPUT_TEMPLATE_PATH,
     COPILOT_OUTPUT_TEMPLATE_PATH,
@@ -12,6 +13,7 @@ from config import (
     PAGE_TITLE,
     REGIONAL_OFFICE_NAMES,
 )
+
 from snowflake_repository import (
     fetch_benchmark_period_keys,
     fetch_date_master,
@@ -34,7 +36,7 @@ from builders.output_workbook_builder import (
 )
 from utils import calculate_cpa, calculate_input_data_cpa, format_period, parse_int
 
-from openpyxl import load_workbook
+APPLIED_CONNECTION_SETTING_KEY = "applied_connection_setting"
 
 
 @dataclass(frozen=True)
@@ -160,21 +162,12 @@ def load_date_details(settings: PlanningSettings) -> list[DateDetail]:
     return date_details
 
 
-def render_settings_section() -> PlanningSettings:
+def render_planning_settings_section(
+    benchmark_period_keys: list[str],
+) -> PlanningSettings:
     st.subheader("計画値")
 
     col_regional_office, col_benchmark_period_keys = st.columns(2)
-
-    try:
-        benchmark_period_keys = fetch_benchmark_period_keys()
-    except Exception as exc:  # noqa: BLE001
-        st.error("Snowflakeから過去実績対象期間を取得できませんでした。")
-        st.exception(exc)
-        st.stop()
-
-    if not benchmark_period_keys:
-        st.error("過去実績対象期間が取得できませんでした。")
-        st.stop()
 
     with col_benchmark_period_keys:
         selected_benchmark_period_key = str(
@@ -225,7 +218,7 @@ def render_settings_section() -> PlanningSettings:
 
 
 def render_constraint_section(
-    settings: PlanningSettings,
+    planning_settings: PlanningSettings,
     regional_office_schedule_constraints: list[RegionalOfficeScheduleConstraint],
 ) -> ConstraintDetail:
     st.subheader("制約条件")
@@ -234,7 +227,7 @@ def render_constraint_section(
         (
             c
             for c in regional_office_schedule_constraints
-            if c.regional_office == settings.regional_office_name
+            if c.regional_office == planning_settings.regional_office_name
         ),
         None,
     )
@@ -244,7 +237,7 @@ def render_constraint_section(
     with col_proposal_period:
         st.text_input(
             "提案期間",
-            value=settings.proposal_period,
+            value=planning_settings.proposal_period,
             disabled=True,
         )
 
@@ -304,7 +297,7 @@ def render_constraint_section(
         st.error(error)
 
     return ConstraintDetail(
-        proposal_period=settings.proposal_period,
+        proposal_period=planning_settings.proposal_period,
         monthly_event_count=daily_event_limit,
         weekday_pattern=weekday_pattern,
         target_pi=target_pi,
@@ -413,25 +406,29 @@ def main() -> None:
     st.title(PAGE_TITLE)
 
     st.divider()
-    settings = render_settings_section()
+    benchmark_period_keys = fetch_benchmark_period_keys()
+    planning_settings = render_planning_settings_section(benchmark_period_keys)
 
     st.divider()
     regional_office_schedule_constraints = fetch_regional_office_schedule_constraints()
     constraint_detail = render_constraint_section(
-        settings, regional_office_schedule_constraints
+        planning_settings,
+        regional_office_schedule_constraints,
     )
 
     st.divider()
-    facility_details = load_facility_details(settings)
+    facility_details = load_facility_details(planning_settings)
 
     st.divider()
-    facility_daily_target_details = load_facility_daily_target_details(settings)
+    facility_daily_target_details = load_facility_daily_target_details(
+        planning_settings,
+    )
 
     st.divider()
-    date_details = load_date_details(settings)
+    date_details = load_date_details(planning_settings)
 
     render_download_button(
-        settings=settings,
+        settings=planning_settings,
         constraint_detail=constraint_detail,
         date_details=date_details,
         facility_details=facility_details,

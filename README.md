@@ -4,38 +4,49 @@
 
 ※ データベース名・スキーマ名は環境に応じて変更する。
 
-### 1. スキーマの作成
+---
+
+### 1. データベース・スキーマ・ステージ・ウェアハウスの作成
 
 以下のクエリを実行する。
 
 ```sql
 
-CREATE SCHEMA DATABASE_NAME.RAW;
-CREATE SCHEMA DATABASE_NAME.STG;
-CREATE SCHEMA DATABASE_NAME.INT;
-CREATE SCHEMA DATABASE_NAME.MART;
+CREATE DATABASE USERDB_D_P01_LAK;
+CREATE SCHEMA USERDB_D_P01_LAK.USER_SMCB_01;
+CREATE STAGE USERDB_D_P01_LAK.USER_SMCB_01.STREAMLIT_STAGE;
+
+CREATE OR REPLACE WAREHOUSE STREAMLIT_WH WITH
+  WAREHOUSE_SIZE = '<warehouse_size>'
+  AUTO_SUSPEND = <auto_suspend>
+  AUTO_RESUME = <auto_resume>
+  INITIALLY_SUSPENDED = <initially_suspended>
+  COMMENT = '<comment>';
 
 ```
 
-### 2. RAWテーブルの作成
+---
 
-Excelアップローダーから、全種類のデータをアップロードしてRAW層のテーブルを作成する。
+### 2. 過去実績期間マスタ管理アプリのデプロイ
 
-RAW_BENCHMARK_PERIODSについては、Excelアップローダーの対象ではないので、以下のクエリを実行する。
+Snowflakeのサイト上から先ほど作成した `STREAMLIT_STAGE` に移動し、`BENCHMARK_PERIODS_MANAGER` フォルダ配下に、`streamlit/benchmark_periods_manager` フォルダ配下のリソースを全てアップロードする。
+
+その後、以下のコマンドでStreamlitアプリを作成する。
 
 ```sql
--- streamlit/benchmark_periods_manager/snowflake_repository.py > init_table関数内で使用しています。
-
-CREATE TABLE IF NOT EXISTS DATABASE_NAME.RAW.RAW_BENCHMARK_PERIODS (
-    BENCHMARK_PERIOD_KEY STRING NOT NULL,
-    BENCHMARK_PERIOD_NAME STRING NOT NULL,
-    PERIOD_START_DATE DATE NOT NULL,
-    PERIOD_END_DATE DATE NOT NULL,
-    PERIOD_MONTH_COUNT INT NOT NULL
-)
+CREATE OR REPLACE STREAMLIT USERDB_D_P01_LAK.USER_SMCB_01.UPLOADER_XLSX
+  ROOT_LOCATION = '@USERDB_D_P01_LAK.USER_SMCB_01.STREAMLIT_STAGE/UPLOADER_XLSX'
+  MAIN_FILE = 'app.py'
+  QUERY_WAREHOUSE = STREAMLIT_WH;
 ```
 
-上記クエリを実行後、過去実績期間マスタ管理アプリからデータを追加する。
+アプリが作成できたら、以下の期間を追加しておく。
+
+1. 2025年4月1日 ~ 2026年3月31日
+2. 2025年10月1日 ~ 2026年2月28日
+3. 2025年10月1日 ~ 2025年12月31日
+
+---
 
 ### 3. ビューの作成
 
@@ -47,22 +58,25 @@ CREATE TABLE IF NOT EXISTS DATABASE_NAME.RAW.RAW_BENCHMARK_PERIODS (
     - フォルダ・ファイルの番号の小さい順に実行
 4. marts配下のSQL（順不同）
 
+---
+
 ### 4. マートテーブルの作成
 
 `operations_queries/最終マートテーブル作成用.sql`を実行する。
 
 ※ このクエリはRAW層のテーブル内のデータ更新があるたびに実行する必要がある。
 
+---
+
 ### 5. 各種Streamlitアプリのデプロイ
 
-各種Streamlitアプリをデプロイする。
+#### 5.1 UPLOADER_XLSXのデプロイ
 
-**snowコマンドでデプロイする場合***
+Snowflakeのサイト上から先ほど作成した `STREAMLIT_STAGE` に移動し、`UPLOADER_XLSX` フォルダ配下に、`streamlit/uploader` フォルダ配下のリソースを全てアップロードする。
 
-```bash
--- strealmit/benchmark_periods_manager・streamlit/event_plan_workbook_builder・streamlit/uploader配下で以下を実行する。
-snow streamlit deploy --replace --prune --legacy -c <connection_name> --database <database_name> --schema <schema_name>
-```
+#### 5.2 EVENT_PLAN_WORKBOOK_BUILDERのデプロイ
+
+Snowflakeのサイト上から先ほど作成した `STREAMLIT_STAGE` に移動し、`EVENT_PLAN_WORKBOOK_BUILDER` フォルダ配下に、`streamlit/event_plan_workbook_builder` フォルダ配下のリソースを全てアップロードする。
 
 ---
 

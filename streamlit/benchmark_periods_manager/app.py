@@ -1,30 +1,23 @@
 from __future__ import annotations
 
-from dataclasses import asdict
-from datetime import date
-from typing import Any
 
 import pandas as pd
 import streamlit as st
 
-from config import PAGE_TITLE
-from entities import BenchmarkPeriod
+from dataclasses import asdict
+from datetime import date
+from typing import Any
+
 from snowflake_repository import (
     init_table,
     apply_benchmark_period_updates_and_deletes,
-    clear_benchmark_periods_cache,
     fetch_benchmark_periods,
     insert_benchmark_period,
 )
+from entities import BenchmarkPeriod
 
 FLASH_MESSAGE_KEY = "flash_message"
-
-
-def render_flash_message() -> None:
-    message = st.session_state.pop(FLASH_MESSAGE_KEY, None)
-
-    if message:
-        st.success(message)
+APPLIED_CONNECTION_SETTING_KEY = "applied_connection_setting"
 
 
 def to_date_or_none(value: Any) -> date | None:
@@ -35,6 +28,15 @@ def to_date_or_none(value: Any) -> date | None:
         return pd.to_datetime(value).date()
     except Exception:
         return None
+
+
+def to_editable_dataframe(periods: list[BenchmarkPeriod]) -> pd.DataFrame:
+    df = pd.DataFrame(
+        [asdict(period) for period in periods],
+        columns=list(BenchmarkPeriod.__dataclass_fields__.keys()),
+    )
+    df.insert(0, "delete", False)
+    return df
 
 
 def build_benchmark_period(
@@ -54,15 +56,6 @@ def build_benchmark_period(
         - period_start_date.month
         + 1,
     )
-
-
-def to_editable_dataframe(periods: list[BenchmarkPeriod]) -> pd.DataFrame:
-    df = pd.DataFrame(
-        [asdict(period) for period in periods],
-        columns=list(BenchmarkPeriod.__dataclass_fields__.keys()),
-    )
-    df.insert(0, "delete", False)
-    return df
 
 
 def validate_period_dates(
@@ -167,6 +160,13 @@ def validate_update_delete_inputs(
     return errors, update_rows, delete_keys
 
 
+def render_flash_message() -> None:
+    message = st.session_state.pop(FLASH_MESSAGE_KEY, None)
+
+    if message:
+        st.success(message)
+
+
 def render_add_section(existing_periods: list[BenchmarkPeriod]) -> None:
     st.subheader("追加")
 
@@ -222,7 +222,6 @@ def render_add_section(existing_periods: list[BenchmarkPeriod]) -> None:
     with st.spinner("Snowflakeへ追加中です..."):
         try:
             insert_benchmark_period(benchmark_period)
-            clear_benchmark_periods_cache()
         except Exception as exc:  # noqa: BLE001
             st.error("Snowflakeへの追加に失敗しました。")
             st.exception(exc)
@@ -326,7 +325,6 @@ def render_update_delete_section(benchmark_periods: list[BenchmarkPeriod]) -> No
                 update_rows,
                 delete_keys,
             )
-            clear_benchmark_periods_cache()
 
     except Exception as exc:  # noqa: BLE001
         st.error("Snowflakeへの保存に失敗しました。")
@@ -341,18 +339,15 @@ def render_update_delete_section(benchmark_periods: list[BenchmarkPeriod]) -> No
 
 
 def main() -> None:
-    st.set_page_config(page_title=PAGE_TITLE, layout="wide")
-    st.title(PAGE_TITLE)
+    st.set_page_config(page_title="過去実績期間マスタ管理", layout="wide")
+    st.title("過去実績期間マスタ管理")
+
+    st.divider()
 
     init_table()
     render_flash_message()
 
-    try:
-        benchmark_periods = fetch_benchmark_periods()
-    except Exception as exc:  # noqa: BLE001
-        st.error("Snowflakeから基準期間マスタを取得できませんでした。")
-        st.exception(exc)
-        st.stop()
+    benchmark_periods = fetch_benchmark_periods()
 
     col_add, col_update_delete = st.columns([1, 3])
 

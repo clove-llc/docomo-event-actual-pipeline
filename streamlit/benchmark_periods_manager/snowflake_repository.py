@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import datetime
-import streamlit as st
 
 from datetime import date
-from typing import Any, cast
-from config import SNOWFLAKE_CACHE_TTL_SECONDS
+from typing import Any
 from entities import BenchmarkPeriod
+from snowflake_client import (
+    fetch_all,
+    execute_sql,
+    execute_many,
+)
 
 
 def to_date(value: Any) -> date:
@@ -19,53 +22,43 @@ def to_date(value: Any) -> date:
     return date.fromisoformat(str(value)[:10])
 
 
-def _fetch_all(
-    sql: str,
-    params: list[Any] | None = None,
-) -> list[tuple[Any, ...]]:
-    conn = st.connection("snowflake")
-
-    with conn.cursor() as cursor:
-        if params is None:
-            cursor.execute(sql)
-        else:
-            cursor.execute(sql, params)
-
-        return cast(list[tuple[Any, ...]], cursor.fetchall())
+# ====================
+# Snowflake からのデータ取得
+# ====================
 
 
 def init_table() -> None:
-    """Snowflakeに基準期間マスタのテーブルを作成する。"""
-    conn = st.connection("snowflake")
-
-    with conn.cursor() as cursor:
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS RAW.RAW_BENCHMARK_PERIODS (
-                BENCHMARK_PERIOD_KEY STRING NOT NULL,
-                BENCHMARK_PERIOD_NAME STRING NOT NULL,
-                PERIOD_START_DATE DATE NOT NULL,
-                PERIOD_END_DATE DATE NOT NULL,
-                PERIOD_MONTH_COUNT INT NOT NULL
-            )
-            """)
+    execute_sql(
+        f"""
+        CREATE TABLE IF NOT EXISTS USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS (
+            BENCHMARK_PERIOD_KEY STRING NOT NULL,
+            BENCHMARK_PERIOD_NAME STRING NOT NULL,
+            PERIOD_START_DATE DATE NOT NULL,
+            PERIOD_END_DATE DATE NOT NULL,
+            PERIOD_MONTH_COUNT INT NOT NULL
+        )
+        """,
+    )
 
 
-@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_benchmark_periods() -> list[BenchmarkPeriod]:
     """Snowflakeから基準期間マスタを取得する。"""
-    rows = _fetch_all("""
+    rows = fetch_all(
+        f"""
         SELECT
             BENCHMARK_PERIOD_KEY,
             BENCHMARK_PERIOD_NAME,
             PERIOD_START_DATE,
             PERIOD_END_DATE,
             PERIOD_MONTH_COUNT
-        FROM RAW.RAW_BENCHMARK_PERIODS
+        FROM USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
         ORDER BY
             PERIOD_START_DATE,
             PERIOD_END_DATE,
             BENCHMARK_PERIOD_KEY
-        """)
+        """,
+        [],
+    )
 
     return [
         BenchmarkPeriod(
@@ -79,39 +72,34 @@ def fetch_benchmark_periods() -> list[BenchmarkPeriod]:
     ]
 
 
-def insert_benchmark_period(benchmark_period: BenchmarkPeriod) -> None:
-    """Snowflakeに基準期間マスタを追加する。"""
-    conn = st.connection("snowflake")
-
-    with conn.cursor() as cursor:
-        cursor.execute(
-            """
-            INSERT INTO RAW.RAW_BENCHMARK_PERIODS (
-                BENCHMARK_PERIOD_KEY,
-                BENCHMARK_PERIOD_NAME,
-                PERIOD_START_DATE,
-                PERIOD_END_DATE,
-                PERIOD_MONTH_COUNT
-            )
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            [
-                benchmark_period.benchmark_period_key,
-                benchmark_period.benchmark_period_name,
-                benchmark_period.period_start_date,
-                benchmark_period.period_end_date,
-                benchmark_period.period_month_count,
-            ],
+def insert_benchmark_period(
+    benchmark_period: BenchmarkPeriod,
+) -> None:
+    execute_sql(
+        f"""
+        INSERT INTO USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS (
+            BENCHMARK_PERIOD_KEY,
+            BENCHMARK_PERIOD_NAME,
+            PERIOD_START_DATE,
+            PERIOD_END_DATE,
+            PERIOD_MONTH_COUNT
         )
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        [
+            benchmark_period.benchmark_period_key,
+            benchmark_period.benchmark_period_name,
+            benchmark_period.period_start_date.isoformat(),
+            benchmark_period.period_end_date.isoformat(),
+            benchmark_period.period_month_count,
+        ],
+    )
 
 
 def apply_benchmark_period_updates_and_deletes(
     update_rows: list[tuple[str, BenchmarkPeriod]],
     delete_keys: list[str],
 ) -> dict[str, int]:
-    """Snowflakeの基準期間マスタに更新・削除を反映する。INSERTは行わない。"""
-    conn = st.connection("snowflake")
-
     update_params = [
         (
             period.benchmark_period_key,
@@ -126,45 +114,38 @@ def apply_benchmark_period_updates_and_deletes(
 
     delete_params = [(benchmark_period_key,) for benchmark_period_key in delete_keys]
 
-    with conn.cursor() as cursor:
-        try:
-            cursor.execute("BEGIN")
+    try:
+        execute_sql("BEGIN")
 
-            if delete_params:
-                cursor.executemany(
-                    """
-                    DELETE FROM RAW.RAW_BENCHMARK_PERIODS
-                    WHERE BENCHMARK_PERIOD_KEY = ?
-                    """,
-                    delete_params,
-                )
+        execute_many(
+            f"""
+            DELETE FROM USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
+            WHERE BENCHMARK_PERIOD_KEY = ?
+            """,
+            delete_params,
+        )
 
-            if update_params:
-                cursor.executemany(
-                    """
-                    UPDATE RAW.RAW_BENCHMARK_PERIODS
-                    SET
-                        BENCHMARK_PERIOD_KEY = ?,
-                        BENCHMARK_PERIOD_NAME = ?,
-                        PERIOD_START_DATE = ?,
-                        PERIOD_END_DATE = ?,
-                        PERIOD_MONTH_COUNT = ?
-                    WHERE BENCHMARK_PERIOD_KEY = ?
-                    """,
-                    update_params,
-                )
+        execute_many(
+            f"""
+            UPDATE USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
+            SET
+                BENCHMARK_PERIOD_KEY = ?,
+                BENCHMARK_PERIOD_NAME = ?,
+                PERIOD_START_DATE = ?,
+                PERIOD_END_DATE = ?,
+                PERIOD_MONTH_COUNT = ?
+            WHERE BENCHMARK_PERIOD_KEY = ?
+            """,
+            update_params,
+        )
 
-            cursor.execute("COMMIT")
+        execute_sql("COMMIT")
 
-        except Exception:
-            cursor.execute("ROLLBACK")
-            raise
+    except Exception:
+        execute_sql("ROLLBACK")
+        raise
 
     return {
         "updated": len(update_params),
         "deleted": len(delete_params),
     }
-
-
-def clear_benchmark_periods_cache() -> None:
-    fetch_benchmark_periods.clear()

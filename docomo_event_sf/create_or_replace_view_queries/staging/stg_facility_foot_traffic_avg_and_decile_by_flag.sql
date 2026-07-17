@@ -1,7 +1,7 @@
 
-create or replace view HARATO.STG.stg_facility_foot_traffic_avg_and_decile_by_flag as (
+create or replace view USERDB_D_P01_LAK.USER_SMCB_01.stg_facility_foot_traffic_avg_and_decile_by_flag as (
 select
   *
-from HARATO.RAW.raw_facility_foot_traffic_avg_and_decile_by_flag
+from USERDB_D_P01_LAK.USER_SMCB_01.raw_facility_foot_traffic_avg_and_decile_by_flag
 );
 

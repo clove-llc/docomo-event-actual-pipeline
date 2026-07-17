@@ -1,0 +1,50 @@
+definition_version: 2
+
+entities:
+  event_plan_workbook_builder:
+    type: streamlit
+    identifier: EVENT_PLAN_WORKBOOK_BUILDER
+    stage: STREAMLIT_STAGE
+    query_warehouse: STREAMLIT_WH
+    main_file: event_plan_workbook_builder/app.py
+    artifacts:
+      # アプリ本体
+      - src: event_plan_workbook_builder/*.py
+        dest: ./
+      - src: event_plan_workbook_builder/environment.yml
+        dest: ./
+
+      # アプリ固有フォルダ
+      - src: event_plan_workbook_builder/builders/*.py
+        dest: builders/
+      - src: event_plan_workbook_builder/templates/*.xlsx
+        dest: templates/
+
+  benchmark_periods_manager:
+    type: streamlit
+    identifier: BENCHMARK_PERIODS_MANAGER
+    stage: STREAMLIT_STAGE
+    query_warehouse: STREAMLIT_WH
+    main_file: benchmark_periods_manager/app.py
+    artifacts:
+      # アプリ本体
+      - src: benchmark_periods_manager/*.py
+        dest: ./
+      - src: benchmark_periods_manager/environment.yml
+        dest: ./
+
+  uploader_xlsx:
+    type: streamlit
+    identifier: UPLOADER_XLSX
+    stage: STREAMLIT_STAGE
+    query_warehouse: STREAMLIT_WH
+    main_file: uploader/app.py
+    artifacts:
+      - src: uploader/*.py
+        dest: ./
+      - src: uploader/environment.yml
+        dest: ./
+      - src: uploader/loaders/*.py
+        dest: loaders/
+      - src: uploader/sql/*.sql
+        dest: sql/

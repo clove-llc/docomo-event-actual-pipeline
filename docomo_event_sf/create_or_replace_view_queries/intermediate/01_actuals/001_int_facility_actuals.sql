@@ -1,5 +1,5 @@
 
-  create or replace   view HARATO.INT.int_facility_actuals
+  create or replace   view USERDB_D_P01_LAK.USER_SMCB_01.int_facility_actuals
   
   
   
@@ -20,7 +20,7 @@
         event_date,
         actual_value,
         facility_name
-    from HARATO.STG.stg_facility_actuals
+    from USERDB_D_P01_LAK.USER_SMCB_01.stg_facility_actuals
 )
 select
     f_a_d.source_sheet_name,
@@ -37,7 +37,7 @@ select
     f_a_d.actual_value,
     coalesce(s_f_n_m.mapped_name, f_a_d.facility_name) as facility_name
 from facility_actuals_distinct as f_a_d
-left join HARATO.STG.stg_facility_name_mappings as s_f_n_m
+left join USERDB_D_P01_LAK.USER_SMCB_01.stg_facility_name_mappings as s_f_n_m
     on f_a_d.facility_name = s_f_n_m.original_name
   );
 

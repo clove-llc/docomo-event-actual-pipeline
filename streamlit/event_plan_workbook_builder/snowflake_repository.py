@@ -1,31 +1,32 @@
 from __future__ import annotations
-import streamlit as st
 import datetime
 
 from datetime import date
-from typing import Any, cast
-
-from config import SNOWFLAKE_CACHE_TTL_SECONDS
+from typing import Any
 from entities import (
     DateDetail,
     FacilityDailyTargetDetail,
     FacilityDetail,
     RegionalOfficeScheduleConstraint,
 )
+from snowflake_client import (
+    fetch_all,
+)
 
-def to_int_or_none(value) -> int | None:
+# ====================
+# データ型の変換
+# ====================
+
+
+def _to_int_or_none(value) -> int | None:
     return None if value is None else int(value)
 
 
-def to_str_or_none(value) -> str | None:
+def _to_str_or_none(value) -> str | None:
     return None if value is None else str(value)
 
 
-def to_bool_or_none(value) -> bool | None:
-    return None if value is None else bool(value)
-
-
-def to_date(value: Any) -> date:
+def _to_date(value: Any) -> date:
     if isinstance(value, datetime.datetime):
         return value.date()
 
@@ -35,50 +36,40 @@ def to_date(value: Any) -> date:
     return date.fromisoformat(str(value)[:10])
 
 
-def _fetch_all(
-    sql: str,
-    params: list[Any] | None = None,
-) -> list[tuple[Any, ...]]:
-    conn = st.connection("snowflake")
-
-    with conn.cursor() as cursor:
-        if params is None:
-            cursor.execute(sql)
-        else:
-            cursor.execute(sql, params)
-
-        return cast(list[tuple[Any, ...]], cursor.fetchall())
+# ====================
+# Snowflake からのデータ取得
+# ====================
 
 
-@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_benchmark_period_keys() -> list[str]:
     """Snowflakeから過去実績対象期間の一覧を取得する。"""
-    conn = st.connection("snowflake")
-
-    with conn.cursor() as cursor:
-        cursor.execute("""
+    rows = fetch_all(
+        f"""
             SELECT DISTINCT
                 BENCHMARK_PERIOD_KEY
-            FROM INT.INT_BENCHMARK_PERIODS
+            FROM USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
             ORDER BY BENCHMARK_PERIOD_KEY DESC
-            """)
-        rows = cursor.fetchall()
+            """,
+        [],
+    )
 
     return [str(row[0]) for row in rows]
 
 
-@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_regional_office_schedule_constraints() -> (
     list[RegionalOfficeScheduleConstraint]
 ):
     """Snowflakeから支社別スケジュール制限マスタの情報を取得する。"""
-    rows = _fetch_all("""
+    rows = fetch_all(
+        f"""
         SELECT
             REGIONAL_OFFICE,
             DAILY_EVENT_LIMIT,
             OPERATING_DAYS
-        FROM STG.STG_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER
-        """)
+        FROM USERDB_D_P01_LAK.USER_SMCB_01.STG_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER
+        """,
+        [],
+    )
 
     return [
         RegionalOfficeScheduleConstraint(
@@ -90,7 +81,6 @@ def fetch_regional_office_schedule_constraints() -> (
     ]
 
 
-@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_facility_daily_target_details(
     benchmark_period_key: str,
     year: int,
@@ -98,8 +88,8 @@ def fetch_facility_daily_target_details(
     regional_office_name: str,
 ) -> list[FacilityDailyTargetDetail]:
     """Snowflakeから過去実績対象期間の実績をもとに算出された対象支社の目標値を取得する。"""
-    rows = _fetch_all(
-        """
+    rows = fetch_all(
+        f"""
         SELECT
             FACILITY_CODE,
             FACILITY_NAME,
@@ -110,7 +100,7 @@ def fetch_facility_daily_target_details(
             DATE_FLAG,
             CPA,
             STANDARD_TARGET_SEASONAL
-        FROM MART.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE
+        FROM USERDB_D_P01_LAK.USER_SMCB_01.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE
         WHERE BENCHMARK_PERIOD_KEY = ?
           AND EXTRACT(YEAR FROM DATE) = ?
           AND EXTRACT(MONTH FROM DATE) = ?
@@ -131,17 +121,16 @@ def fetch_facility_daily_target_details(
             facility_name=str(row[1]),
             po_level=str(row[2]),
             regional_office=str(row[3]),
-            branch_office=to_str_or_none(row[4]),
-            date=to_date(row[5]),
+            branch_office=_to_str_or_none(row[4]),
+            date=_to_date(row[5]),
             date_flag=str(row[6]),
-            cpa=to_int_or_none(row[7]),
+            cpa=_to_int_or_none(row[7]),
             target_value=int(row[8]),
         )
         for row in rows
     ]
 
 
-@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_facility_details(
     benchmark_period_key: str,
     year: int,
@@ -149,8 +138,8 @@ def fetch_facility_details(
     regional_office_name: str,
 ) -> list[FacilityDetail]:
     """Snowflakeから指定された支社の施設詳細情報を取得する。"""
-    rows = _fetch_all(
-        """
+    rows = fetch_all(
+        f"""
         SELECT
             F_F_P_S.FACILITY_CODE,
             F_F_P_S.FACILITY_NAME,
@@ -170,8 +159,8 @@ def fetch_facility_details(
             ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = '年末' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_year_end_standard_target_seasonal,
             ROUND(AVG(CASE WHEN F_F_P_S.DATE_FLAG = 'ブラックフライデー' THEN F_F_P_S.STANDARD_TARGET_SEASONAL END)) AS avg_black_friday_standard_target_seasonal
         FROM
-            MART.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE AS F_F_P_S
-            LEFT JOIN STG.STG_FACILITY_SCHEDULE_CONSTRAINTS_MASTER AS F_S_C_M ON F_F_P_S.FACILITY_CODE = F_S_C_M.FACILITY_CODE
+            USERDB_D_P01_LAK.USER_SMCB_01.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE AS F_F_P_S
+            LEFT JOIN USERDB_D_P01_LAK.USER_SMCB_01.STG_FACILITY_SCHEDULE_CONSTRAINTS_MASTER AS F_S_C_M ON F_F_P_S.FACILITY_CODE = F_S_C_M.FACILITY_CODE
         WHERE F_F_P_S.BENCHMARK_PERIOD_KEY = ?
             AND EXTRACT(YEAR FROM F_F_P_S.DATE) = ?
             AND EXTRACT(MONTH FROM F_F_P_S.DATE) = ?
@@ -201,34 +190,33 @@ def fetch_facility_details(
             facility_name=str(row[1]),
             po_level=str(row[2]),
             regional_office=str(row[3]),
-            branch_office=to_str_or_none(row[4]),
-            cpa=to_int_or_none(row[5]),
-            monthly_event_limit=to_str_or_none(row[6]),
-            operating_days=to_str_or_none(row[7]),
-            avg_weekday_standard_target_seasonal=to_int_or_none(row[8]),
-            avg_regular_weekend_standard_target_seasonal=to_int_or_none(row[9]),
-            avg_three_day_holiday_standard_target_seasonal=to_int_or_none(row[10]),
-            avg_bridge_holiday_standard_target_seasonal=to_int_or_none(row[11]),
-            avg_gw_standard_target_seasonal=to_int_or_none(row[12]),
-            avg_obon_standard_target_seasonal=to_int_or_none(row[13]),
-            avg_new_year_standard_target_seasonal=to_int_or_none(row[14]),
-            avg_year_end_standard_target_seasonal=to_int_or_none(row[15]),
-            avg_black_friday_standard_target_seasonal=to_int_or_none(row[16]),
+            branch_office=_to_str_or_none(row[4]),
+            cpa=_to_int_or_none(row[5]),
+            monthly_event_limit=_to_str_or_none(row[6]),
+            operating_days=_to_str_or_none(row[7]),
+            avg_weekday_standard_target_seasonal=_to_int_or_none(row[8]),
+            avg_regular_weekend_standard_target_seasonal=_to_int_or_none(row[9]),
+            avg_three_day_holiday_standard_target_seasonal=_to_int_or_none(row[10]),
+            avg_bridge_holiday_standard_target_seasonal=_to_int_or_none(row[11]),
+            avg_gw_standard_target_seasonal=_to_int_or_none(row[12]),
+            avg_obon_standard_target_seasonal=_to_int_or_none(row[13]),
+            avg_new_year_standard_target_seasonal=_to_int_or_none(row[14]),
+            avg_year_end_standard_target_seasonal=_to_int_or_none(row[15]),
+            avg_black_friday_standard_target_seasonal=_to_int_or_none(row[16]),
         )
         for row in rows
     ]
 
 
-@st.cache_data(ttl=SNOWFLAKE_CACHE_TTL_SECONDS)
 def fetch_date_master(year: int, month: int) -> list[DateDetail]:
     """Snowflakeから指定された年月の日付マスタ情報を取得する。"""
-    rows = _fetch_all(
-        """
+    rows = fetch_all(
+        f"""
         SELECT
             DATE,
             WEEKDAY_NAME_AND_WEEK_NUMBER_MONTHLY,
             DATE_FLAG
-        FROM STG.STG_DATE_MASTER
+        FROM USERDB_D_P01_LAK.USER_SMCB_01.STG_DATE_MASTER
         WHERE YEAR = ?
           AND MONTH = ?
         ORDER BY DATE
@@ -241,7 +229,7 @@ def fetch_date_master(year: int, month: int) -> list[DateDetail]:
 
     return [
         DateDetail(
-            date=to_date(row[0]),
+            date=_to_date(row[0]),
             weekday_name_and_week_number_monthly=str(row[1]),
             date_flag=str(row[2]),
         )

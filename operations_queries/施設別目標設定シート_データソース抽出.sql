@@ -1,4 +1,4 @@
-/* 
+/*
 ============================================================
 
 施設別目標設定シート用のデータソース抽出用のクエリです。
@@ -37,6 +37,6 @@ SELECT DISTINCT
     Z_SCORE AS "季節指数",
     STANDARD_TARGET_SEASONAL AS "標準目標値_季節指数加味",
     CHALLENGE_TARGET_SEASONAL AS "チャレンジ目標値_季節指数加味"
-FROM HARATO.MART.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE -- 「データベース名」はここで変更する。
+FROM USERDB_D_P01_LAK.USER_SMCB_01.FACT_FACILITY_PERFORMANCE_SLOTS_TABLE -- 「データベース名」はここで変更する。
 WHERE BENCHMARK_PERIOD_KEY = '2025_10_2026_02' -- 「過去実績期間」はここで変更する。
   AND "DATE" BETWEEN '2025-04-01'::date AND '2026-03-31'::date -- 「目標値を出力する期間」はここで変更する。

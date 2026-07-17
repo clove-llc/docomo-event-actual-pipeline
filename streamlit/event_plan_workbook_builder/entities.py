@@ -16,11 +16,13 @@ class ConstraintDetail:
 
         return round(self.condition_cost / self.target_pi)
 
+
 @dataclass(frozen=True)
 class RegionalOfficeScheduleConstraint:
     regional_office: str
     daily_event_limit: int
     operating_days: str
+
 
 @dataclass(frozen=True)
 class FacilityDetail:
