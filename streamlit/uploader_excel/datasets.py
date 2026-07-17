@@ -176,6 +176,28 @@ TARGET_CPA = DatasetSpec(
     caption="施設別目標CPAマスタの「施設別目標CPAマスタ」シート(A:B)を RAW_FACILITY_TARGET_CPA_MASTER へ",
 )
 
+MONTHLY_CONSTRAINT = DatasetSpec(
+    label="月次制約条件マスタ",
+    table="RAW_MONTHLY_CONSTRAINTS_MASTER",
+    layout="flat",
+    sheet="月次制約条件マスタ",
+    rename={
+        "年度": "YEAR",
+        "月": "MONTH",
+        "支社名": "REGIONAL_OFFICE",
+        "目標実績": "TARGET_ACTUAL",
+        "条件コスト": "CONSTRAINT_COST",
+    },
+    type_map={
+        "YEAR": "NUMBER",
+        "MONTH": "NUMBER",
+        "REGIONAL_OFFICE": "VARCHAR",
+        "TARGET_ACTUAL": "NUMBER",
+        "CONSTRAINT_COST": "NUMBER",
+    },
+    caption="月次制約条件マスタの「月次制約条件マスタ」シート(A:E)を RAW_MONTHLY_CONSTRAINTS_MASTER へ",
+)
+
 DATASETS = {
     s.label: s
     for s in [
@@ -189,5 +211,6 @@ DATASETS = {
         FACILITY_SCHEDULE_CONSTRAINT,
         REGIONAL_OFFICE_SCHEDULE_CONSTRAINT,
         TARGET_CPA,
+        MONTHLY_CONSTRAINT,
     ]
 }
