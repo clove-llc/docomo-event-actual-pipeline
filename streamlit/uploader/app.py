@@ -27,7 +27,7 @@ st.set_page_config(page_title="Snowflake アップローダ", page_icon="📤", 
 session = get_active_session()
 cfg = get_sf_config()
 ctx = LoadContext(
-    session=session, cfg=cfg, db="USERDB_D_P01_LAK", schema="USER_SMCB_01"
+    session=session, cfg=cfg, db="USERDB_B_P01_LAK", schema="USER_SMCB_01"
 )
 
 # ===== メイン =====

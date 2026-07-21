@@ -30,7 +30,7 @@ def to_date(value: Any) -> date:
 def init_table() -> None:
     execute_sql(
         f"""
-        CREATE TABLE IF NOT EXISTS USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS (
+        CREATE TABLE IF NOT EXISTS USERDB_B_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS (
             BENCHMARK_PERIOD_KEY STRING NOT NULL,
             BENCHMARK_PERIOD_NAME STRING NOT NULL,
             PERIOD_START_DATE DATE NOT NULL,
@@ -51,7 +51,7 @@ def fetch_benchmark_periods() -> list[BenchmarkPeriod]:
             PERIOD_START_DATE,
             PERIOD_END_DATE,
             PERIOD_MONTH_COUNT
-        FROM USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
+        FROM USERDB_B_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
         ORDER BY
             PERIOD_START_DATE,
             PERIOD_END_DATE,
@@ -77,7 +77,7 @@ def insert_benchmark_period(
 ) -> None:
     execute_sql(
         f"""
-        INSERT INTO USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS (
+        INSERT INTO USERDB_B_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS (
             BENCHMARK_PERIOD_KEY,
             BENCHMARK_PERIOD_NAME,
             PERIOD_START_DATE,
@@ -119,7 +119,7 @@ def apply_benchmark_period_updates_and_deletes(
 
         execute_many(
             f"""
-            DELETE FROM USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
+            DELETE FROM USERDB_B_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
             WHERE BENCHMARK_PERIOD_KEY = ?
             """,
             delete_params,
@@ -127,7 +127,7 @@ def apply_benchmark_period_updates_and_deletes(
 
         execute_many(
             f"""
-            UPDATE USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
+            UPDATE USERDB_B_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS
             SET
                 BENCHMARK_PERIOD_KEY = ?,
                 BENCHMARK_PERIOD_NAME = ?,

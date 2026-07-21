@@ -1,5 +1,5 @@
 
-  create or replace   view USERDB_D_P01_LAK.USER_SMCB_01.stg_date_master
+  create or replace   view USERDB_B_P01_LAK.USER_SMCB_01.stg_date_master
   
   
   
@@ -22,6 +22,6 @@
     "weekday_holiday_with_holiday" as "WEEKDAY_HOLIDAY_WITH_HOLIDAY",
     "date_type" as "DATE_TYPE",
     "date_flag" as "DATE_FLAG"
-from USERDB_D_P01_LAK.USER_SMCB_01.RAW_DATE_MASTER
+from USERDB_B_P01_LAK.USER_SMCB_01.RAW_DATE_MASTER
   );
 

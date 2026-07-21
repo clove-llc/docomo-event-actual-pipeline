@@ -1,9 +1,9 @@
-create or replace view USERDB_D_P01_LAK.USER_SMCB_01.raw_facility_daily_deviation_zscore as (
+create or replace view USERDB_B_P01_LAK.USER_SMCB_01.raw_facility_daily_deviation_zscore as (
 with
 -- s1: 01_日別施設別（SENSE）を縦持ち化し、日付フラグを付与
 seasonal_src as (
     select t.*, object_construct(*) as obj
-    from USERDB_D_P01_LAK.USER_SMCB_01.RAW_FACILITY_FOOT_TRAFFIC_DAILY t
+    from USERDB_B_P01_LAK.USER_SMCB_01.RAW_FACILITY_FOOT_TRAFFIC_DAILY t
 ),
 seasonal_unpivoted as (
     select
@@ -22,7 +22,7 @@ seasonal_daily as (
         u.sense_value,
         df."date_flag" as date_flag
     from seasonal_unpivoted u
-    left join USERDB_D_P01_LAK.USER_SMCB_01.RAW_DATE_FLAG df
+    left join USERDB_B_P01_LAK.USER_SMCB_01.RAW_DATE_FLAG df
         on u.event_date = df."date"
 ),
 -- s2: 平均値 / 標準偏差（標本=STDDEV_SAMP）。全フラグ分を算出し、下流で4フラグのみ採用

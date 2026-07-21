@@ -1,4 +1,4 @@
-create or replace view USERDB_D_P01_LAK.USER_SMCB_01.int_facility_event_decile_avg_actual as (
+create or replace view USERDB_B_P01_LAK.USER_SMCB_01.int_facility_event_decile_avg_actual as (
 with joined as (
     select
         p.benchmark_period_key,
@@ -13,10 +13,10 @@ with joined as (
         d.date_flag,
         m.decile_rank,
         d.actual
-    from USERDB_D_P01_LAK.USER_SMCB_01.int_facility_daily_actual as d
-    inner join USERDB_D_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS as p
+    from USERDB_B_P01_LAK.USER_SMCB_01.int_facility_daily_actual as d
+    inner join USERDB_B_P01_LAK.USER_SMCB_01.RAW_BENCHMARK_PERIODS as p
         on d.date between p.period_start_date and p.period_end_date
-    left join USERDB_D_P01_LAK.USER_SMCB_01.int_facility_event_decile_mapping as m
+    left join USERDB_B_P01_LAK.USER_SMCB_01.int_facility_event_decile_mapping as m
         on d.facility_code = m.facility_code
        and d.date_flag = m.date_flag
 )
