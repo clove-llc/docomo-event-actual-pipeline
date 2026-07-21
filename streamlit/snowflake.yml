@@ -33,9 +33,9 @@ entities:
       - src: benchmark_periods_manager/environment.yml
         dest: ./
 
-  uploader_xlsx:
+  uploader_excel:
     type: streamlit
-    identifier: UPLOADER_XLSX
+    identifier: UPLOADER_EXCEL
     stage: STREAMLIT_STAGE
     query_warehouse: STREAMLIT_WH
     main_file: uploader/app.py
