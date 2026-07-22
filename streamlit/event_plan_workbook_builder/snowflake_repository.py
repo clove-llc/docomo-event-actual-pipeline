@@ -7,6 +7,7 @@ from entities import (
     DateDetail,
     FacilityDailyTargetDetail,
     FacilityDetail,
+    RegionalOfficeMonthlyConstraint,
     RegionalOfficeScheduleConstraint,
 )
 from snowflake_client import (
@@ -85,7 +86,6 @@ def fetch_facility_daily_target_details(
     benchmark_period_key: str,
     year: int,
     month: int,
-    regional_office_name: str,
 ) -> list[FacilityDailyTargetDetail]:
     """Snowflakeから過去実績対象期間の実績をもとに算出された対象支社の目標値を取得する。"""
     rows = fetch_all(
@@ -104,14 +104,12 @@ def fetch_facility_daily_target_details(
         WHERE BENCHMARK_PERIOD_KEY = ?
           AND EXTRACT(YEAR FROM DATE) = ?
           AND EXTRACT(MONTH FROM DATE) = ?
-          AND REGIONAL_OFFICE = ?
           AND HAS_TARGET_CPA
         """,
         [
             benchmark_period_key,
             year,
             month,
-            regional_office_name,
         ],
     )
 
@@ -135,7 +133,6 @@ def fetch_facility_details(
     benchmark_period_key: str,
     year: int,
     month: int,
-    regional_office_name: str,
 ) -> list[FacilityDetail]:
     """Snowflakeから指定された支社の施設詳細情報を取得する。"""
     rows = fetch_all(
@@ -164,7 +161,6 @@ def fetch_facility_details(
         WHERE F_F_P_S.BENCHMARK_PERIOD_KEY = ?
             AND EXTRACT(YEAR FROM F_F_P_S.DATE) = ?
             AND EXTRACT(MONTH FROM F_F_P_S.DATE) = ?
-            AND F_F_P_S.REGIONAL_OFFICE = ?
             AND F_F_P_S.HAS_TARGET_CPA = TRUE
         GROUP BY
             F_F_P_S.FACILITY_CODE,
@@ -180,7 +176,6 @@ def fetch_facility_details(
             benchmark_period_key,
             year,
             month,
-            regional_office_name,
         ],
     )
 
@@ -232,6 +227,43 @@ def fetch_date_master(year: int, month: int) -> list[DateDetail]:
             date=_to_date(row[0]),
             weekday_name_and_week_number_monthly=str(row[1]),
             date_flag=str(row[2]),
+        )
+        for row in rows
+    ]
+
+
+def fetch_monthly_constraints_master(
+    year: int, month: int
+) -> list[RegionalOfficeMonthlyConstraint]:
+    """Snowflakeから指定された年月の制約条件マスタ情報（目標実績値・条件コスト）を取得する。"""
+    rows = fetch_all(
+        f"""
+        SELECT
+            M_C.REGIONAL_OFFICE,
+            M_C.TARGET_ACTUAL,
+            M_C.CONSTRAINT_COST,
+            R_O_S_C.DAILY_EVENT_LIMIT,
+            R_O_S_C.OPERATING_DAYS
+        FROM USERDB_B_P01_LAK.USER_SMCB_01.RAW_MONTHLY_CONSTRAINTS_MASTER AS M_C
+        LEFT JOIN USERDB_B_P01_LAK.USER_SMCB_01.STG_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER AS R_O_S_C
+            ON M_C.REGIONAL_OFFICE = R_O_S_C.REGIONAL_OFFICE
+        WHERE YEAR = ?
+          AND MONTH = ?
+        ORDER BY REGIONAL_OFFICE
+        """,
+        [
+            year,
+            month,
+        ],
+    )
+
+    return [
+        RegionalOfficeMonthlyConstraint(
+            regional_office=str(row[0]),
+            target_actual=int(row[1]),
+            constraint_cost=int(row[2]),
+            daily_event_limit=int(row[3]),
+            weekday_pattern=str(row[4]),
         )
         for row in rows
     ]

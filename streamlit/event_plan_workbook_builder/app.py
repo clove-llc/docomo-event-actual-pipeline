@@ -3,15 +3,14 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from typing import cast
 from datetime import datetime
 from dataclasses import asdict, dataclass
 from openpyxl import load_workbook
 from config import (
     COPILOT_INPUT_TEMPLATE_PATH,
     COPILOT_OUTPUT_TEMPLATE_PATH,
-    EXCEL_MIME_TYPE,
     PAGE_TITLE,
-    REGIONAL_OFFICE_NAMES,
 )
 
 from snowflake_repository import (
@@ -19,14 +18,14 @@ from snowflake_repository import (
     fetch_date_master,
     fetch_facility_daily_target_details,
     fetch_facility_details,
-    fetch_regional_office_schedule_constraints,
+    fetch_monthly_constraints_master,
 )
 from entities import (
     ConstraintDetail,
     DateDetail,
     FacilityDailyTargetDetail,
     FacilityDetail,
-    RegionalOfficeScheduleConstraint,
+    RegionalOfficeMonthlyConstraint,
 )
 from builders.input_workbook_builder import (
     InputWorkbookBuilder,
@@ -34,73 +33,35 @@ from builders.input_workbook_builder import (
 from builders.output_workbook_builder import (
     OutputWorkbookBuilder,
 )
-from utils import calculate_cpa, calculate_input_data_cpa, format_period, parse_int
+from utils import format_period
 
 APPLIED_CONNECTION_SETTING_KEY = "applied_connection_setting"
 
 
 @dataclass(frozen=True)
-class PlanningSettings:
-    regional_office_name: str
+class PlanningSetting:
     benchmark_period_key: str
     year: int
     month: int
+    proposal_period: str
 
-    @property
-    def proposal_period(self) -> str:
-        return format_period(self.year, self.month)
-
-
-def validate_constraint_inputs(
-    *,
-    daily_event_limit_text: str | None,
-    daily_event_limit: int | None,
-    target_pi_text: str,
-    target_pi: int | None,
-    condition_cost_text: str,
-    condition_cost: int | None,
-) -> list[str]:
-    errors: list[str] = []
-
-    if not daily_event_limit_text or (
-        daily_event_limit_text.strip() != "" and daily_event_limit is None
-    ):
-        errors.append("稼働ラインは整数で入力してください。")
-
-    if target_pi_text.strip() != "" and target_pi is None:
-        errors.append("目標実績は整数で入力してください。")
-
-    if condition_cost_text.strip() != "" and condition_cost is None:
-        errors.append("条件コストは整数で入力してください。")
-
-    if target_pi == 0:
-        errors.append("目標実績が0のため、CPAを計算できません。")
-
-    # condition_cost は空欄を許容するので、現時点では参照だけで十分。
-    _ = condition_cost
-
-    return errors
+    def get_period_prefix(self) -> str:
+        return f"{self.year}年{self.month}月_"
 
 
 def load_facility_daily_target_details(
-    settings: PlanningSettings,
+    settings: PlanningSetting,
 ) -> list[FacilityDailyTargetDetail]:
     st.subheader("施設別・日別目標値")
 
-    try:
-        facility_daily_target_details = fetch_facility_daily_target_details(
-            settings.benchmark_period_key,
-            settings.year,
-            settings.month,
-            settings.regional_office_name,
-        )
-    except Exception as exc:  # noqa: BLE001
-        st.error("Snowflakeから施設別目標値を取得できませんでした。")
-        st.exception(exc)
-        st.stop()
+    facility_daily_target_details = fetch_facility_daily_target_details(
+        settings.benchmark_period_key,
+        settings.year,
+        settings.month,
+    )
 
     st.write(
-        f"Snowflakeから「{settings.regional_office_name}」の「{settings.year}/{settings.month}」の目標値を "
+        f"Snowflakeから「{settings.year}/{settings.month}」の目標値を "
         f"{len(facility_daily_target_details):,} 件取得しました。"
     )
     render_dataframe_preview(
@@ -112,26 +73,17 @@ def load_facility_daily_target_details(
 
 
 def load_facility_details(
-    settings: PlanningSettings,
+    settings: PlanningSetting,
 ) -> list[FacilityDetail]:
-    st.subheader("対象支社の施設情報")
+    st.subheader("施設情報")
 
-    try:
-        facility_details = fetch_facility_details(
-            settings.benchmark_period_key,
-            settings.year,
-            settings.month,
-            settings.regional_office_name,
-        )
-    except Exception as exc:  # noqa: BLE001
-        st.error("Snowflakeから対象支社の施設情報を取得できませんでした。")
-        st.exception(exc)
-        st.stop()
-
-    st.write(
-        f"Snowflakeから「{settings.regional_office_name}」の施設情報を "
-        f"{len(facility_details):,} 件取得しました。"
+    facility_details = fetch_facility_details(
+        settings.benchmark_period_key,
+        settings.year,
+        settings.month,
     )
+
+    st.write(f"Snowflakeから施設情報を " f"{len(facility_details):,} 件取得しました。")
     render_dataframe_preview(
         "取得した施設情報を確認する",
         pd.DataFrame([asdict(detail) for detail in facility_details]),
@@ -140,15 +92,10 @@ def load_facility_details(
     return facility_details
 
 
-def load_date_details(settings: PlanningSettings) -> list[DateDetail]:
+def load_date_details(settings: PlanningSetting) -> list[DateDetail]:
     st.subheader("日付情報")
 
-    try:
-        date_details = fetch_date_master(year=settings.year, month=settings.month)
-    except Exception as exc:  # noqa: BLE001
-        st.error("Snowflakeから日付情報を取得できませんでした。")
-        st.exception(exc)
-        st.stop()
+    date_details = fetch_date_master(year=settings.year, month=settings.month)
 
     st.write(
         f"Snowflakeから「{settings.year}/{settings.month}」の日付情報を "
@@ -164,30 +111,12 @@ def load_date_details(settings: PlanningSettings) -> list[DateDetail]:
 
 def render_planning_settings_section(
     benchmark_period_keys: list[str],
-) -> PlanningSettings:
-    st.subheader("計画値")
+) -> PlanningSetting:
+    st.subheader("対象期間")
 
-    col_regional_office, col_benchmark_period_keys = st.columns(2)
-
-    with col_benchmark_period_keys:
-        selected_benchmark_period_key = str(
-            st.selectbox(
-                "過去実績対象期間",
-                benchmark_period_keys,
-                index=0,
-            )
-        )
-
-    with col_regional_office:
-        selected_regional_office = str(
-            st.selectbox(
-                "支社",
-                REGIONAL_OFFICE_NAMES,
-                index=0,
-            )
-        )
-
-    col_year, col_month = st.columns(2)
+    col_year, col_month, col_benchmark_period_keys, col_proposal_period = st.columns(
+        [1, 1, 2, 2]
+    )
     current_year = datetime.now().year
     current_month = datetime.now().month
 
@@ -197,6 +126,7 @@ def render_planning_settings_section(
                 "対象年度",
                 options=list(range(current_year, current_year + 3)),
                 index=0,
+                help="イベントプランを作成したい年度",
             )
         )
 
@@ -206,103 +136,142 @@ def render_planning_settings_section(
                 "対象月",
                 options=list(range(1, 13)),
                 index=current_month - 1,
+                help="イベントプランを作成したい月",
             )
         )
 
-    return PlanningSettings(
-        regional_office_name=selected_regional_office,
+    with col_benchmark_period_keys:
+        selected_benchmark_period_key = str(
+            st.selectbox(
+                "過去実績期間",
+                benchmark_period_keys,
+                index=0,
+                help="目標値を算出する際に対象となる過去実績の期間",
+            )
+        )
+
+    with col_proposal_period:
+        selected_proposal_period = st.text_input(
+            "対象期間",
+            value=format_period(selected_year, selected_month),
+            disabled=True,
+        )
+
+    return PlanningSetting(
         benchmark_period_key=selected_benchmark_period_key,
         year=selected_year,
         month=selected_month,
+        proposal_period=selected_proposal_period,
+    )
+
+
+def create_constraint_dataframe(
+    regional_office_constraints: list[RegionalOfficeMonthlyConstraint],
+) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "regional_office": regional_office_constraint.regional_office,
+                "daily_event_limit": regional_office_constraint.daily_event_limit,
+                "operating_days": regional_office_constraint.weekday_pattern,
+                "target_actual": regional_office_constraint.target_actual,
+                "constraint_cost": regional_office_constraint.constraint_cost,
+            }
+            for regional_office_constraint in regional_office_constraints
+        ],
+        columns=[
+            "regional_office",
+            "daily_event_limit",
+            "operating_days",
+            "target_actual",
+            "constraint_cost",
+        ],
     )
 
 
 def render_constraint_section(
-    planning_settings: PlanningSettings,
-    regional_office_schedule_constraints: list[RegionalOfficeScheduleConstraint],
-) -> ConstraintDetail:
+    planning_settings: PlanningSetting,
+    regional_office_monthly_constraints: list[RegionalOfficeMonthlyConstraint],
+) -> list[ConstraintDetail]:
     st.subheader("制約条件")
 
-    selected_constraint = next(
-        (
-            c
-            for c in regional_office_schedule_constraints
-            if c.regional_office == planning_settings.regional_office_name
-        ),
-        None,
-    )
+    if not regional_office_monthly_constraints:
+        st.warning("対象期間の制約条件がありません。")
+        return []
 
-    col_proposal_period, col_daily_event_limit, col_weekday_pattern = st.columns(3)
+    constraint_df = create_constraint_dataframe(regional_office_monthly_constraints)
 
-    with col_proposal_period:
-        st.text_input(
-            "提案期間",
-            value=planning_settings.proposal_period,
-            disabled=True,
+    # 対象期間が変わった場合は別のdata_editorとして扱う
+    editor_key = f"constraint_editor_" f"{planning_settings.proposal_period}"
+    form_key = f"constraint_form_" f"{planning_settings.proposal_period}"
+
+    with st.form(form_key):
+        edited_df = st.data_editor(
+            constraint_df,
+            column_order=[
+                "regional_office",
+                "daily_event_limit",
+                "operating_days",
+                "target_actual",
+                "constraint_cost",
+            ],
+            column_config={
+                "regional_office": st.column_config.TextColumn(
+                    "支社",
+                    width="small",
+                    disabled=True,
+                ),
+                "daily_event_limit": st.column_config.NumberColumn(
+                    "日当たり稼働ライン",
+                    min_value=0,
+                    step=1,
+                    required=True,
+                ),
+                "operating_days": st.column_config.TextColumn(
+                    "稼働曜日",
+                    width="medium",
+                    required=True,
+                ),
+                "target_actual": st.column_config.NumberColumn(
+                    "目標実績（PI）",
+                    min_value=0,
+                    step=1,
+                    required=True,
+                ),
+                "constraint_cost": st.column_config.NumberColumn(
+                    "条件コスト（円）",
+                    min_value=0,
+                    step=1,
+                    required=True,
+                ),
+            },
+            num_rows="fixed",
+            hide_index=True,
+            width="stretch",
+            key=editor_key,
         )
 
-    with col_daily_event_limit:
-        daily_event_limit_text = st.text_input(
-            "日当たり稼働ライン",
-            value=selected_constraint.daily_event_limit if selected_constraint else "",
-            placeholder="例: 8",
+        submitted = st.form_submit_button(
+            "変更を反映",
+            type="primary",
         )
 
-    with col_weekday_pattern:
-        weekday_pattern = st.text_input(
-            "稼働曜日",
-            value=selected_constraint.operating_days if selected_constraint else "",
-            placeholder="例: 金～日",
+    if submitted:
+        st.success("制約条件を反映しました。")
+
+    constraint_details = [
+        ConstraintDetail(
+            regional_office=str(row.regional_office),
+            proposal_period=planning_settings.proposal_period,
+            daily_event_limit=int(cast(int | float, row.daily_event_limit)),
+            weekday_pattern=str(row.operating_days),
+            target_actual=int(cast(int | float, row.target_actual)),
+            constraint_cost=int(cast(int | float, row.constraint_cost)),
         )
+        for row in edited_df.itertuples(index=False)
+    ]
 
-    col_target_pi, col_condition_cost, col_target_cpt = st.columns(3)
-
-    with col_target_pi:
-        target_pi_text = st.text_input(
-            "目標実績（PI）",
-            value="",
-            placeholder="例: 5,595",
-        )
-
-    with col_condition_cost:
-        condition_cost_text = st.text_input(
-            "条件コスト（円）",
-            value="",
-            placeholder="例: 247,543,639",
-        )
-
-    daily_event_limit = parse_int(daily_event_limit_text)
-    target_pi = parse_int(target_pi_text)
-    condition_cost = parse_int(condition_cost_text)
-    target_cpa = calculate_cpa(condition_cost, target_pi)
-
-    with col_target_cpt:
-        st.text_input(
-            "目標CPA水準（円）",
-            value="" if target_cpa is None else f"{target_cpa:,}",
-            placeholder="※ 条件コスト/目標実績 の結果",
-            disabled=True,
-        )
-
-    errors = validate_constraint_inputs(
-        daily_event_limit_text=daily_event_limit_text,
-        daily_event_limit=daily_event_limit,
-        target_pi_text=target_pi_text,
-        target_pi=target_pi,
-        condition_cost_text=condition_cost_text,
-        condition_cost=condition_cost,
-    )
-
-    for error in errors:
-        st.error(error)
-
-    return ConstraintDetail(
-        proposal_period=planning_settings.proposal_period,
-        monthly_event_count=daily_event_limit,
-        weekday_pattern=weekday_pattern,
-        target_pi=target_pi,
-        condition_cost=condition_cost,
-    )
+    return constraint_details
 
 
 def render_dataframe_preview(title: str, df: pd.DataFrame) -> None:
@@ -312,92 +281,60 @@ def render_dataframe_preview(title: str, df: pd.DataFrame) -> None:
 
 def render_download_button(
     *,
-    settings: PlanningSettings,
-    constraint_detail: ConstraintDetail,
-    date_details: list[DateDetail],
+    planning_setting: PlanningSetting,
+    constraint_details: list[ConstraintDetail],
     facility_details: list[FacilityDetail],
     facility_daily_target_details: list[FacilityDailyTargetDetail],
+    date_details: list[DateDetail],
 ) -> None:
     disabled = (
-        len(facility_details) == 0
-        or len(date_details) == 0
+        len(constraint_details) == 0
+        or len(facility_details) == 0
         or len(facility_daily_target_details) == 0
+        or len(date_details) == 0
     )
 
-    input_file_name = (
-        f"{settings.regional_office_name}_AI入力シート_"
-        f"{settings.year}{settings.month:02d}.xlsx"
-    )
-
-    output_file_name = (
-        f"{settings.regional_office_name}_AI出力貼付シート_"
-        f"{settings.year}{settings.month:02d}.xlsx"
-    )
-
-    st.subheader("Excelファイル生成")
+    st.subheader("Excelファイルダウンロード")
 
     if disabled:
-        st.warning("Excel生成に必要なデータが不足しています。")
+        st.warning("Excelファイルの生成に必要なデータが不足しています。")
         return
 
-    if not st.button("Excelファイルを生成", type="primary"):
-        st.info("ボタンを押すとExcelファイルを生成します。")
-        return
+    col_input_workbook_download_button, col_output_workbook_download_button = (
+        st.columns(2)
+    )
 
-    try:
-        input_wb = load_workbook(COPILOT_INPUT_TEMPLATE_PATH)
-        output_wb = load_workbook(COPILOT_OUTPUT_TEMPLATE_PATH)
+    input_workbook_bytes = InputWorkbookBuilder(
+        constraint_details=constraint_details,
+        facility_details=facility_details,
+        date_details=date_details,
+        facility_daily_target_details=facility_daily_target_details,
+    ).build()
+    output_workbook_bytes = OutputWorkbookBuilder(
+        constraint_details=constraint_details,
+        facility_details=facility_details,
+        date_details=date_details,
+        facility_daily_target_details=facility_daily_target_details,
+    ).build()
 
-        input_data_cpa = calculate_input_data_cpa(facility_details)
+    st.info("ボタンを押すとExcelファイルをダウンロードできます。")
 
-        input_workbook_bytes = InputWorkbookBuilder(
-            wb=input_wb,
-            constraint_detail=constraint_detail,
-            facility_details=facility_details,
-            date_details=date_details,
-            facility_daily_target_details=facility_daily_target_details,
-            input_data_cpa=input_data_cpa,
-        ).build()
-
-        output_workbook_bytes = OutputWorkbookBuilder(
-            wb=output_wb,
-            constraint_detail=constraint_detail,
-            facility_details=facility_details,
-            date_details=date_details,
-            facility_daily_target_details=facility_daily_target_details,
-            input_data_cpa=input_data_cpa,
-        ).build()
-
-    except FileNotFoundError as exc:
-        st.error("Excelテンプレートファイルが見つかりません。")
-        st.exception(exc)
-        return
-
-    except Exception as exc:  # noqa: BLE001
-        st.error("Excelファイルの生成に失敗しました。")
-        st.exception(exc)
-        return
-
-    st.success("Excelファイルを生成しました。")
-
-    col_input, col_output = st.columns(2)
-
-    with col_input:
+    with col_input_workbook_download_button:
         st.download_button(
-            label="AI入力用のExcelをダウンロード",
+            label="入力シート一式をダウンロード",
             data=input_workbook_bytes,
-            file_name=input_file_name,
-            mime=EXCEL_MIME_TYPE,
-            on_click="ignore",
+            file_name=f"{planning_setting.get_period_prefix()}Copilot入力用Excel.zip",
+            mime="application/zip",
+            type="primary",
         )
 
-    with col_output:
+    with col_output_workbook_download_button:
         st.download_button(
-            label="AI出力貼付用のExcelをダウンロード",
+            label="出力シート一式をダウンロード",
             data=output_workbook_bytes,
-            file_name=output_file_name,
-            mime=EXCEL_MIME_TYPE,
-            on_click="ignore",
+            file_name=f"{planning_setting.get_period_prefix()}Copilot出力用Excel.zip",
+            mime="application/zip",
+            type="primary",
         )
 
 
@@ -407,32 +344,34 @@ def main() -> None:
 
     st.divider()
     benchmark_period_keys = fetch_benchmark_period_keys()
-    planning_settings = render_planning_settings_section(benchmark_period_keys)
+    planning_setting = render_planning_settings_section(benchmark_period_keys)
 
     st.divider()
-    regional_office_schedule_constraints = fetch_regional_office_schedule_constraints()
-    constraint_detail = render_constraint_section(
-        planning_settings,
-        regional_office_schedule_constraints,
+    regional_office_monthly_constraints = fetch_monthly_constraints_master(
+        planning_setting.year, planning_setting.month
+    )
+    constraint_details = render_constraint_section(
+        planning_setting,
+        regional_office_monthly_constraints,
     )
 
     st.divider()
-    facility_details = load_facility_details(planning_settings)
+    facility_details = load_facility_details(planning_setting)
 
     st.divider()
     facility_daily_target_details = load_facility_daily_target_details(
-        planning_settings,
+        planning_setting,
     )
 
     st.divider()
-    date_details = load_date_details(planning_settings)
+    date_details = load_date_details(planning_setting)
 
     render_download_button(
-        settings=planning_settings,
-        constraint_detail=constraint_detail,
-        date_details=date_details,
+        planning_setting=planning_setting,
+        constraint_details=constraint_details,
         facility_details=facility_details,
         facility_daily_target_details=facility_daily_target_details,
+        date_details=date_details,
     )
 
 
