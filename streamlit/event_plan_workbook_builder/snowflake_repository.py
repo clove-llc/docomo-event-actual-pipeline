@@ -133,7 +133,7 @@ def fetch_facility_details(
     benchmark_period_key: str,
     year: int,
     month: int,
-) -> list[FacilityDetail]:
+) -> tuple[list[FacilityDetail], int]:
     """Snowflakeから指定された支社の施設詳細情報を取得する。"""
     rows = fetch_all(
         f"""
@@ -179,28 +179,38 @@ def fetch_facility_details(
         ],
     )
 
-    return [
-        FacilityDetail(
-            facility_code=int(row[0]),
-            facility_name=str(row[1]),
-            po_level=str(row[2]),
-            regional_office=str(row[3]),
-            branch_office=_to_str_or_none(row[4]),
-            cpa=_to_int_or_none(row[5]),
-            monthly_event_limit=_to_str_or_none(row[6]),
-            operating_days=_to_str_or_none(row[7]),
-            avg_weekday_standard_target_seasonal=_to_int_or_none(row[8]),
-            avg_regular_weekend_standard_target_seasonal=_to_int_or_none(row[9]),
-            avg_three_day_holiday_standard_target_seasonal=_to_int_or_none(row[10]),
-            avg_bridge_holiday_standard_target_seasonal=_to_int_or_none(row[11]),
-            avg_gw_standard_target_seasonal=_to_int_or_none(row[12]),
-            avg_obon_standard_target_seasonal=_to_int_or_none(row[13]),
-            avg_new_year_standard_target_seasonal=_to_int_or_none(row[14]),
-            avg_year_end_standard_target_seasonal=_to_int_or_none(row[15]),
-            avg_black_friday_standard_target_seasonal=_to_int_or_none(row[16]),
+    facility_details: list[FacilityDetail] = []
+    total_cpa = 0
+
+    for row in rows:
+        cpa = _to_int_or_none(row[5])
+
+        if cpa:
+            total_cpa += cpa
+
+        facility_details.append(
+            FacilityDetail(
+                facility_code=int(row[0]),
+                facility_name=str(row[1]),
+                po_level=str(row[2]),
+                regional_office=str(row[3]),
+                branch_office=_to_str_or_none(row[4]),
+                cpa=cpa,
+                monthly_event_limit=_to_str_or_none(row[6]),
+                operating_days=_to_str_or_none(row[7]),
+                avg_weekday_standard_target_seasonal=_to_int_or_none(row[8]),
+                avg_regular_weekend_standard_target_seasonal=_to_int_or_none(row[9]),
+                avg_three_day_holiday_standard_target_seasonal=_to_int_or_none(row[10]),
+                avg_bridge_holiday_standard_target_seasonal=_to_int_or_none(row[11]),
+                avg_gw_standard_target_seasonal=_to_int_or_none(row[12]),
+                avg_obon_standard_target_seasonal=_to_int_or_none(row[13]),
+                avg_new_year_standard_target_seasonal=_to_int_or_none(row[14]),
+                avg_year_end_standard_target_seasonal=_to_int_or_none(row[15]),
+                avg_black_friday_standard_target_seasonal=_to_int_or_none(row[16]),
+            )
         )
-        for row in rows
-    ]
+
+    return facility_details, round(total_cpa / len(facility_details))
 
 
 def fetch_date_master(year: int, month: int) -> list[DateDetail]:
@@ -240,10 +250,10 @@ def fetch_monthly_constraints_master(
         f"""
         SELECT
             M_C.REGIONAL_OFFICE,
-            M_C.TARGET_ACTUAL,
-            M_C.CONSTRAINT_COST,
             R_O_S_C.DAILY_EVENT_LIMIT,
-            R_O_S_C.OPERATING_DAYS
+            R_O_S_C.OPERATING_DAYS,
+            M_C.TARGET_ACTUAL,
+            M_C.CONSTRAINT_COST
         FROM USERDB_B_P01_LAK.USER_SMCB_01.RAW_MONTHLY_CONSTRAINTS_MASTER AS M_C
         LEFT JOIN USERDB_B_P01_LAK.USER_SMCB_01.STG_REGIONAL_OFFICE_SCHEDULE_CONSTRAINTS_MASTER AS R_O_S_C
             ON M_C.REGIONAL_OFFICE = R_O_S_C.REGIONAL_OFFICE
@@ -260,10 +270,10 @@ def fetch_monthly_constraints_master(
     return [
         RegionalOfficeMonthlyConstraint(
             regional_office=str(row[0]),
-            target_actual=int(row[1]),
-            constraint_cost=int(row[2]),
-            daily_event_limit=int(row[3]),
-            weekday_pattern=str(row[4]),
+            daily_event_limit=int(row[1]),
+            operating_days=str(row[2]),
+            target_actual=int(row[3]),
+            constraint_cost=int(row[4]),
         )
         for row in rows
     ]

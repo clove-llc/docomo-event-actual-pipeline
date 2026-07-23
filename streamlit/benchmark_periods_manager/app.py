@@ -17,7 +17,6 @@ from snowflake_repository import (
 from entities import BenchmarkPeriod
 
 FLASH_MESSAGE_KEY = "flash_message"
-APPLIED_CONNECTION_SETTING_KEY = "applied_connection_setting"
 
 
 def to_date_or_none(value: Any) -> date | None:

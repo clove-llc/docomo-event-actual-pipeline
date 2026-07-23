@@ -1,4 +1,4 @@
-from datetime import date
+import datetime
 from dataclasses import dataclass
 
 
@@ -54,7 +54,7 @@ class FacilityDailyTargetDetail:
     regional_office: str
     branch_office: str | None
     cpa: int | None
-    date: date
+    date: datetime.date
     date_flag: str
     target_value: int
 
@@ -64,7 +64,7 @@ class FacilityDailyTargetDetail:
 
 @dataclass(frozen=True)
 class DateDetail:
-    date: date
+    date: datetime.date
     weekday_name_and_week_number_monthly: str
     date_flag: str
 
@@ -72,7 +72,7 @@ class DateDetail:
 @dataclass(frozen=True)
 class RegionalOfficeMonthlyConstraint:
     regional_office: str
+    daily_event_limit: int
+    operating_days: str
     target_actual: int
     constraint_cost: int
-    daily_event_limit: int
-    weekday_pattern: str

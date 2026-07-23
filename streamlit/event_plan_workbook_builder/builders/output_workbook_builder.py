@@ -14,7 +14,6 @@ from entities import (
     FacilityDetail,
 )
 from config import COPILOT_OUTPUT_TEMPLATE_PATH
-from utils import calculate_input_data_cpa
 
 
 def build_rank_eq_map(
@@ -62,7 +61,7 @@ class OutputWorkbookBuilder:
         "想定CPA_集計",
         "最適なスタッフ数_集計",
     ]
-    FACILITY_OUTPUT_START_ROW = 7
+    FACILITY_OUTPUT_START_ROW = 8
 
     FACILITY_DAILY_TARGET_SHEET_NAME = "施設別・日別_目標値"
     FACILITY_DAILY_TARGET_START_ROW = 3
@@ -75,20 +74,16 @@ class OutputWorkbookBuilder:
         *,
         constraint_details: list[ConstraintDetail],
         facility_details: list[FacilityDetail],
+        cpa_avg: int,
         date_details: list[DateDetail],
         facility_daily_target_details: list[FacilityDailyTargetDetail],
     ) -> None:
-        wb = load_workbook(COPILOT_OUTPUT_TEMPLATE_PATH)
-        template_buffer = BytesIO()
-        wb.save(template_buffer)
-
-        self.template_workbook_bytes = template_buffer.getvalue()
-        self.wb = wb
+        self.template_workbook_bytes = COPILOT_OUTPUT_TEMPLATE_PATH.read_bytes()
         self.constraint_details = constraint_details
         self.facility_details = facility_details
+        self.cpa_avg = cpa_avg
         self.date_details = date_details
         self.facility_daily_target_details = facility_daily_target_details
-        self.input_data_cpa = calculate_input_data_cpa(facility_details)
 
     def _write_common_constraint_sheet(
         self, ws: Worksheet, constraint_detail: ConstraintDetail
@@ -99,7 +94,7 @@ class OutputWorkbookBuilder:
         ws[f"C6"] = constraint_detail.target_actual
         ws[f"C7"] = constraint_detail.constraint_cost
         ws[f"C8"] = constraint_detail.target_cpa()
-        ws[f"C9"] = self.input_data_cpa
+        ws[f"C9"] = self.cpa_avg
 
     def _write_regional_office_constraint_sheet(self, ws: Worksheet) -> None:
         for i, constraint in enumerate(self.constraint_details):
@@ -152,13 +147,13 @@ class OutputWorkbookBuilder:
         for col_offset, date_detail in enumerate(self.date_details):
             col_idx = start_col + col_offset
 
-            ws.cell(row=4, column=col_idx, value=date_detail.date)
+            ws.cell(row=5, column=col_idx, value=date_detail.date)
             ws.cell(
-                row=5,
+                row=6,
                 column=col_idx,
                 value=date_detail.weekday_name_and_week_number_monthly,
             )
-            ws.cell(row=6, column=col_idx, value=date_detail.date_flag)
+            ws.cell(row=7, column=col_idx, value=date_detail.date_flag)
 
     def _write_facility_priority_sheet(
         self, ws: Worksheet, facility_details: list[FacilityDetail]
@@ -477,7 +472,7 @@ class OutputWorkbookBuilder:
 
             try:
                 self._write_common_constraint_sheet(
-                    self.wb[self.COMMON_CONSTRAINT_SHEET_NAME], constraint_detail
+                    wb[self.COMMON_CONSTRAINT_SHEET_NAME], constraint_detail
                 )
 
                 if is_regional_version:
@@ -491,28 +486,28 @@ class OutputWorkbookBuilder:
                     )
 
                 self._write_facility_output_sheet(
-                    self.wb[self.COPILOT_OUTPUT_SHEET_NAME],
+                    wb[self.COPILOT_OUTPUT_SHEET_NAME],
                     facility_details,
                 )
 
                 self._write_date_header(
-                    self.wb[self.COPILOT_OUTPUT_SHEET_NAME], start_col=18
+                    wb[self.COPILOT_OUTPUT_SHEET_NAME], start_col=18
                 )
 
                 for sheet_name in self.FACILITY_OUTPUT_SHEET_NAMES:
-                    ws = self.wb[sheet_name]
+                    ws = wb[sheet_name]
 
                     self._write_facility_output_sheet(ws, facility_details)
 
                     self._write_date_header(ws)
 
                 self._write_facility_daily_target_sheet(
-                    self.wb[self.FACILITY_DAILY_TARGET_SHEET_NAME],
+                    wb[self.FACILITY_DAILY_TARGET_SHEET_NAME],
                     daily_target_details,
                 )
 
                 self._write_facility_priority_sheet(
-                    self.wb[self.FACILITY_PRIORITY_SHEET_NAME],
+                    wb[self.FACILITY_PRIORITY_SHEET_NAME],
                     facility_details,
                 )
 

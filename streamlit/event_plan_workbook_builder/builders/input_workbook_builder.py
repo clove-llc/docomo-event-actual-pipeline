@@ -13,7 +13,6 @@ from entities import (
     FacilityDetail,
 )
 from config import COPILOT_INPUT_TEMPLATE_PATH
-from utils import calculate_input_data_cpa
 
 
 class InputWorkbookBuilder:
@@ -40,34 +39,29 @@ class InputWorkbookBuilder:
         *,
         constraint_details: list[ConstraintDetail],
         facility_details: list[FacilityDetail],
+        cpa_avg: int,
         facility_daily_target_details: list[FacilityDailyTargetDetail],
         date_details: list[DateDetail],
         is_all_regional_offices: bool = False,
     ) -> None:
-        wb = load_workbook(COPILOT_INPUT_TEMPLATE_PATH)
-        template_buffer = BytesIO()
-        wb.save(template_buffer)
-
-        self.template_workbook_bytes = template_buffer.getvalue()
-        self.wb = wb
+        self.template_workbook_bytes = COPILOT_INPUT_TEMPLATE_PATH.read_bytes()
         self.constraint_details = constraint_details
         self.facility_details = facility_details
+        self.cpa_avg = cpa_avg
         self.facility_daily_target_details = facility_daily_target_details
         self.date_details = date_details
-        self.input_data_cpa = calculate_input_data_cpa(facility_details)
         self.is_all_regional_offices = is_all_regional_offices
 
     def _write_common_constraint_sheet(
         self, ws: Worksheet, constraint_detail: ConstraintDetail
     ) -> None:
-
         ws[f"C3"] = constraint_detail.proposal_period
         ws[f"C4"] = constraint_detail.daily_event_limit
         ws[f"C5"] = constraint_detail.weekday_pattern
         ws[f"C6"] = constraint_detail.target_actual
         ws[f"C7"] = constraint_detail.constraint_cost
         ws[f"C8"] = constraint_detail.target_cpa()
-        ws[f"C9"] = self.input_data_cpa
+        ws[f"C9"] = self.cpa_avg
 
     def _write_regional_office_constraint_sheet(self, ws: Worksheet) -> None:
         for i, constraint in enumerate(self.constraint_details):
