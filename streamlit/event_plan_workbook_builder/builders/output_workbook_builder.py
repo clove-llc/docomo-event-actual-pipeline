@@ -1,7 +1,9 @@
 from __future__ import annotations
 from io import BytesIO
 from typing import Iterable
+from zipfile import ZIP_DEFLATED, ZipFile
 
+from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.workbook.workbook import Workbook
 
@@ -11,6 +13,7 @@ from entities import (
     FacilityDailyTargetDetail,
     FacilityDetail,
 )
+from config import COPILOT_OUTPUT_TEMPLATE_PATH
 
 
 def build_rank_eq_map(
@@ -44,7 +47,11 @@ def get_rank(value: int | None, rank_map: dict[int, int]) -> int | None:
 
 
 class OutputWorkbookBuilder:
-    CONSTRAINT_SHEET_NAME = "制約条件"
+    COMMON_CONSTRAINT_SHEET_NAME = "共通制約条件"
+
+    REGIONAL_OFFICE_CONSTRAINT_SHEET_NAME = "支社別制約条件"
+    REGIONAL_OFFICE_OPERATING_DAYS_START_ROW = 4
+    REGIONAL_OFFICE_DAILY_EVENT_LIMITS_START_ROW = 4
 
     COPILOT_OUTPUT_SHEET_NAME = "Copilotの出力結果"
 
@@ -54,7 +61,7 @@ class OutputWorkbookBuilder:
         "想定CPA_集計",
         "最適なスタッフ数_集計",
     ]
-    FACILITY_OUTPUT_START_ROW = 7
+    FACILITY_OUTPUT_START_ROW = 8
 
     FACILITY_DAILY_TARGET_SHEET_NAME = "施設別・日別_目標値"
     FACILITY_DAILY_TARGET_START_ROW = 3
@@ -65,40 +72,51 @@ class OutputWorkbookBuilder:
     def __init__(
         self,
         *,
-        wb: Workbook,
-        constraint_detail: ConstraintDetail,
+        constraint_details: list[ConstraintDetail],
         facility_details: list[FacilityDetail],
+        cpa_avg: int,
         date_details: list[DateDetail],
         facility_daily_target_details: list[FacilityDailyTargetDetail],
-        input_data_cpa: int | None,
     ) -> None:
-        self.wb = wb
-        self.constraint_detail = constraint_detail
+        self.template_workbook_bytes = COPILOT_OUTPUT_TEMPLATE_PATH.read_bytes()
+        self.constraint_details = constraint_details
         self.facility_details = facility_details
+        self.cpa_avg = cpa_avg
         self.date_details = date_details
         self.facility_daily_target_details = facility_daily_target_details
-        self.input_data_cpa = input_data_cpa
 
-    def _write_constraint_sheet(
-        self,
-        ws: Worksheet,
+    def _write_common_constraint_sheet(
+        self, ws: Worksheet, constraint_detail: ConstraintDetail
     ) -> None:
-        ws[f"C3"] = self.constraint_detail.proposal_period
-        ws[f"C4"] = self.constraint_detail.monthly_event_count
-        ws[f"C5"] = self.constraint_detail.weekday_pattern
-        ws[f"C6"] = self.constraint_detail.target_pi
-        ws[f"C7"] = self.constraint_detail.condition_cost
-        ws[f"C8"] = self.constraint_detail.target_cpa()
-        ws[f"C9"] = self.input_data_cpa
+        ws[f"C3"] = constraint_detail.proposal_period
+        ws[f"C4"] = constraint_detail.daily_event_limit
+        ws[f"C5"] = constraint_detail.weekday_pattern
+        ws[f"C6"] = constraint_detail.target_actual
+        ws[f"C7"] = constraint_detail.constraint_cost
+        ws[f"C8"] = constraint_detail.target_cpa()
+        ws[f"C9"] = self.cpa_avg
+
+    def _write_regional_office_constraint_sheet(self, ws: Worksheet) -> None:
+        for i, constraint in enumerate(self.constraint_details):
+            weekday_pattern_row = self.REGIONAL_OFFICE_OPERATING_DAYS_START_ROW + i
+            daily_event_limits_row = (
+                self.REGIONAL_OFFICE_DAILY_EVENT_LIMITS_START_ROW + i
+            )
+
+            ws[f"B{weekday_pattern_row}"] = constraint.regional_office
+            ws[f"C{weekday_pattern_row}"] = constraint.weekday_pattern
+
+            ws[f"E{daily_event_limits_row}"] = constraint.regional_office
+            ws[f"F{daily_event_limits_row}"] = constraint.daily_event_limit - 5
+            ws[f"G{daily_event_limits_row}"] = constraint.daily_event_limit
 
     def _write_facility_output_sheet(
-        self,
-        ws: Worksheet,
+        self, ws: Worksheet, facility_details: list[FacilityDetail]
     ) -> None:
         for (
             row_offset,
             facility_detail,
-        ) in enumerate(self.facility_details):
+        ) in enumerate(facility_details):
             row_idx = self.FACILITY_OUTPUT_START_ROW + row_offset
 
             ws[f"B{row_idx}"] = facility_detail.facility_name
@@ -109,21 +127,13 @@ class OutputWorkbookBuilder:
             ws[f"G{row_idx}"] = facility_detail.monthly_event_limit
             ws[f"H{row_idx}"] = facility_detail.operating_days
 
-    def _write_date_header(self, ws: Worksheet, start_col: int = 9) -> None:
-        for col_offset, date_detail in enumerate(self.date_details):
-            col_idx = start_col + col_offset
-
-            ws.cell(row=4, column=col_idx, value=date_detail.date)
-            ws.cell(
-                row=5,
-                column=col_idx,
-                value=date_detail.weekday_name_and_week_number_monthly,
-            )
-            ws.cell(row=6, column=col_idx, value=date_detail.date_flag)
-
-    def _write_facility_daily_target_sheet(self, ws: Worksheet) -> None:
+    def _write_facility_daily_target_sheet(
+        self,
+        ws: Worksheet,
+        facility_daily_target_details: list[FacilityDailyTargetDetail],
+    ) -> None:
         for row_offset, facility_daily_target_detail in enumerate(
-            self.facility_daily_target_details
+            facility_daily_target_details
         ):
             row_idx = self.FACILITY_DAILY_TARGET_START_ROW + row_offset
 
@@ -133,53 +143,64 @@ class OutputWorkbookBuilder:
             ws[f"E{row_idx}"] = facility_daily_target_detail.date_flag
             ws[f"F{row_idx}"] = facility_daily_target_detail.target_value
 
-    def _write_facility_priority_sheet(self, ws: Worksheet) -> None:
+    def _write_date_header(self, ws: Worksheet, start_col: int = 9) -> None:
+        for col_offset, date_detail in enumerate(self.date_details):
+            col_idx = start_col + col_offset
+
+            ws.cell(row=5, column=col_idx, value=date_detail.date)
+            ws.cell(
+                row=6,
+                column=col_idx,
+                value=date_detail.weekday_name_and_week_number_monthly,
+            )
+            ws.cell(row=7, column=col_idx, value=date_detail.date_flag)
+
+    def _write_facility_priority_sheet(
+        self, ws: Worksheet, facility_details: list[FacilityDetail]
+    ) -> None:
         # ----- CPAランクマップを作成（小さいほどランクが高い） -----
         cpa_rank_map = build_rank_eq_map(
-            (detail.cpa for detail in self.facility_details),
+            (detail.cpa for detail in facility_details),
             reverse=False,
         )
 
         # ----- 日付フラグ別目標値ランクマップを作成（大きいほどランクが高い） -----
         weekday_rank_map = build_rank_eq_map(
-            detail.avg_weekday_standard_target_seasonal
-            for detail in self.facility_details
+            detail.avg_weekday_standard_target_seasonal for detail in facility_details
         )
         regular_weekend_rank_map = build_rank_eq_map(
             detail.avg_regular_weekend_standard_target_seasonal
-            for detail in self.facility_details
+            for detail in facility_details
         )
         three_day_holiday_rank_map = build_rank_eq_map(
             detail.avg_three_day_holiday_standard_target_seasonal
-            for detail in self.facility_details
+            for detail in facility_details
         )
         bridge_holiday_rank_map = build_rank_eq_map(
             detail.avg_bridge_holiday_standard_target_seasonal
-            for detail in self.facility_details
+            for detail in facility_details
         )
         gw_rank_map = build_rank_eq_map(
-            detail.avg_gw_standard_target_seasonal for detail in self.facility_details
+            detail.avg_gw_standard_target_seasonal for detail in facility_details
         )
         obon_rank_map = build_rank_eq_map(
-            detail.avg_obon_standard_target_seasonal for detail in self.facility_details
+            detail.avg_obon_standard_target_seasonal for detail in facility_details
         )
         new_year_rank_map = build_rank_eq_map(
-            detail.avg_new_year_standard_target_seasonal
-            for detail in self.facility_details
+            detail.avg_new_year_standard_target_seasonal for detail in facility_details
         )
         year_end_rank_map = build_rank_eq_map(
-            detail.avg_year_end_standard_target_seasonal
-            for detail in self.facility_details
+            detail.avg_year_end_standard_target_seasonal for detail in facility_details
         )
         black_friday_rank_map = build_rank_eq_map(
             detail.avg_black_friday_standard_target_seasonal
-            for detail in self.facility_details
+            for detail in facility_details
         )
 
         # ----- 1周目: 各施設の日付フラグ別目標値ランク・（CPAランク + 日付フラグ別）のランクを作成 -----
         facility_rank_rows = []
 
-        for facility_detail in self.facility_details:
+        for facility_detail in facility_details:
             cpa_rank = get_rank(facility_detail.cpa, cpa_rank_map)
 
             weekday_rank = get_rank(
@@ -398,26 +419,140 @@ class OutputWorkbookBuilder:
             )
 
     def build(self) -> bytes:
-        self._write_constraint_sheet(self.wb[self.CONSTRAINT_SHEET_NAME])
+        zip_buffer = BytesIO()
 
-        self._write_facility_output_sheet(self.wb[self.COPILOT_OUTPUT_SHEET_NAME])
-        self._write_date_header(self.wb[self.COPILOT_OUTPUT_SHEET_NAME], start_col=18)
+        regional_facility_map: dict[str, list[FacilityDetail]] = {}
 
-        for sheet_name in self.FACILITY_OUTPUT_SHEET_NAMES:
-            ws = self.wb[sheet_name]
+        for facility_detail in self.facility_details:
+            key = facility_detail.regional_office
 
-            self._write_facility_output_sheet(ws)
+            if key not in regional_facility_map:
+                regional_facility_map[key] = []
 
-            self._write_date_header(ws)
+            regional_facility_map[key].append(facility_detail)
 
-        self._write_facility_daily_target_sheet(
-            ws=self.wb[self.FACILITY_DAILY_TARGET_SHEET_NAME]
-        )
+        regional_facility_daily_target_detail_map: dict[
+            str, list[FacilityDailyTargetDetail]
+        ] = {}
 
-        self._write_facility_priority_sheet(self.wb[self.FACILITY_PRIORITY_SHEET_NAME])
+        for facility_daily_target_detail in self.facility_daily_target_details:
+            key = facility_daily_target_detail.regional_office
 
-        output = BytesIO()
-        self.wb.save(output)
-        output.seek(0)
+            if key not in regional_facility_daily_target_detail_map:
+                regional_facility_daily_target_detail_map[key] = []
 
-        return output.getvalue()
+            regional_facility_daily_target_detail_map[key].append(
+                facility_daily_target_detail
+            )
+
+        def add_workbook_to_zip(
+            wb: Workbook,
+            zip_file: ZipFile,
+            *,
+            constraint_detail: ConstraintDetail,
+            is_regional_version: bool = True,
+        ) -> None:
+            regional_office = constraint_detail.regional_office
+
+            facility_details = (
+                regional_facility_map[regional_office]
+                if is_regional_version
+                else self.facility_details
+            )
+
+            daily_target_details = (
+                regional_facility_daily_target_detail_map[regional_office]
+                if is_regional_version
+                else self.facility_daily_target_details
+            )
+
+            output_filename = (
+                f"{regional_office}.xlsx" if is_regional_version else "_全国版.xlsx"
+            )
+
+            try:
+                self._write_common_constraint_sheet(
+                    wb[self.COMMON_CONSTRAINT_SHEET_NAME], constraint_detail
+                )
+
+                if is_regional_version:
+                    regional_office_constraint_ws = wb[
+                        self.REGIONAL_OFFICE_CONSTRAINT_SHEET_NAME
+                    ]
+                    wb.remove(regional_office_constraint_ws)
+                else:
+                    self._write_regional_office_constraint_sheet(
+                        wb[self.REGIONAL_OFFICE_CONSTRAINT_SHEET_NAME]
+                    )
+
+                self._write_facility_output_sheet(
+                    wb[self.COPILOT_OUTPUT_SHEET_NAME],
+                    facility_details,
+                )
+
+                self._write_date_header(
+                    wb[self.COPILOT_OUTPUT_SHEET_NAME], start_col=18
+                )
+
+                for sheet_name in self.FACILITY_OUTPUT_SHEET_NAMES:
+                    ws = wb[sheet_name]
+
+                    self._write_facility_output_sheet(ws, facility_details)
+
+                    self._write_date_header(ws)
+
+                self._write_facility_daily_target_sheet(
+                    wb[self.FACILITY_DAILY_TARGET_SHEET_NAME],
+                    daily_target_details,
+                )
+
+                self._write_facility_priority_sheet(
+                    wb[self.FACILITY_PRIORITY_SHEET_NAME],
+                    facility_details,
+                )
+
+                with BytesIO() as workbook_buffer:
+                    wb.save(workbook_buffer)
+                    zip_file.writestr(
+                        output_filename,
+                        workbook_buffer.getvalue(),
+                    )
+            finally:
+                wb.close()
+
+        zip_buffer = BytesIO()
+        with ZipFile(
+            zip_buffer,
+            mode="w",
+            compression=ZIP_DEFLATED,
+        ) as zip_file:
+            total_daily_event_limit = 0
+            total_target_actual = 0
+            total_constraint_cost = 0
+
+            # 支社別版のExcelを作成する
+            for constraint_detail in self.constraint_details:
+                wb = load_workbook(BytesIO(self.template_workbook_bytes))
+                add_workbook_to_zip(wb, zip_file, constraint_detail=constraint_detail)
+
+                total_daily_event_limit += constraint_detail.daily_event_limit
+                total_target_actual += constraint_detail.target_actual
+                total_constraint_cost += constraint_detail.constraint_cost
+
+            # 全支社版のExcelを作成
+            wb = load_workbook(BytesIO(self.template_workbook_bytes))
+            add_workbook_to_zip(
+                wb,
+                zip_file,
+                constraint_detail=ConstraintDetail(
+                    regional_office="",
+                    proposal_period=self.constraint_details[0].proposal_period,
+                    daily_event_limit=total_daily_event_limit,
+                    weekday_pattern="",
+                    target_actual=total_target_actual,
+                    constraint_cost=total_constraint_cost,
+                ),
+                is_regional_version=False,
+            )
+
+        return zip_buffer.getvalue()
